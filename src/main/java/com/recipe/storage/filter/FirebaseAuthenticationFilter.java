@@ -1,0 +1,77 @@
+package com.recipe.storage.filter;
+
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthException;
+import com.google.firebase.auth.FirebaseToken;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.lang.NonNull;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+/**
+ * Filter that validates Firebase ID tokens and extracts user ID.
+ * Sets userId as a request attribute for downstream use.
+ */
+@Slf4j
+@Component
+public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
+
+  private static final String BEARER_PREFIX = "Bearer ";
+
+  @Value("${auth.enabled}")
+  private boolean authEnabled;
+
+  @Override
+  protected void doFilterInternal(
+      @NonNull HttpServletRequest request,
+      @NonNull HttpServletResponse response,
+      @NonNull FilterChain filterChain) throws ServletException, IOException {
+
+    // Skip auth for health check
+    if (request.getRequestURI().contains("/actuator/health")) {
+      filterChain.doFilter(request, response);
+      return;
+    }
+
+    if (!authEnabled) {
+      log.warn("Authentication is disabled - using test user");
+      request.setAttribute("userId", "test-user");
+      filterChain.doFilter(request, response);
+      return;
+    }
+
+    String authHeader = request.getHeader("Authorization");
+    
+    if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
+      log.error("Missing or invalid Authorization header");
+      response.sendError(HttpServletResponse.SC_UNAUTHORIZED, 
+          "Missing or invalid Authorization header");
+      return;
+    }
+
+    String idToken = authHeader.substring(BEARER_PREFIX.length());
+    
+    try {
+      FirebaseToken decodedToken = FirebaseAuth.getInstance().verifyIdToken(idToken);
+      String uid = decodedToken.getUid();
+      String email = decodedToken.getEmail();
+
+      log.info("Authenticated user: uid={}, email={}", uid, email);
+      
+      // Set userId as request attribute for controller access
+      request.setAttribute("userId", uid);
+      
+      filterChain.doFilter(request, response);
+    } catch (FirebaseAuthException e) {
+      log.error("Failed to verify Firebase token: {}", e.getMessage());
+      response.sendError(HttpServletResponse.SC_UNAUTHORIZED, 
+          "Invalid Firebase ID token");
+    }
+  }
+}
