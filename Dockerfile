@@ -18,6 +18,6 @@ FROM gcr.io/distroless/java17-debian11
 WORKDIR /app
 # Copy the jar from the intermediate runtime image; it already has correct ownership
 COPY --from=runtime /home/appuser/app.jar /app/app.jar
-EXPOSE 8080
+EXPOSE 8081
 USER 1000:1000
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
