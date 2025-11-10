@@ -83,11 +83,16 @@ steps:
           --region ${_REGION} \
           --platform managed \
           --allow-unauthenticated \
+          --port 8081 \
           --memory 512Mi \
           --cpu 1 \
           --timeout 300 \
           --max-instances 10 \
-          --set-env-vars "SPRING_PROFILES_ACTIVE=production,firebase.project.id=recipe-mgmt-dev,auth.enabled=true,GOOGLE_APPLICATION_CREDENTIALS=/secrets/firebase-sa.json,firestore.collection.recipes=recipes" \
+          --set-env-vars SPRING_PROFILES_ACTIVE=production \
+          --set-env-vars FIREBASE_PROJECT_ID=recipe-mgmt-dev \
+          --set-env-vars AUTH_ENABLED=true \
+          --set-env-vars GOOGLE_APPLICATION_CREDENTIALS=/secrets/firebase-sa.json \
+          --set-env-vars FIRESTORE_COLLECTION_RECIPES=recipes \
           --update-secrets "/secrets/firebase-sa.json=firebase-service-account:latest"
 
 # Substitutions for different environments
