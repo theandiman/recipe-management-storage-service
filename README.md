@@ -92,18 +92,11 @@ GET /api/recipes/user/{userId}
 Authorization: Bearer <firebase-id-token>
 ```
 
-### Update Recipe
+### Update Recipe *(planned for future release)*
 ```http
 PUT /api/recipes/{id}
 Authorization: Bearer <firebase-id-token>
 Content-Type: application/json
-```
-
-### Delete Recipe
-```http
-DELETE /api/recipes/{id}
-Authorization: Bearer <firebase-id-token>
-```
 
 ## Local Development
 
