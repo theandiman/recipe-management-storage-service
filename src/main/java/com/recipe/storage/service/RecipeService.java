@@ -130,9 +130,11 @@ public class RecipeService {
     }
     
     try {
+      // Note: Removed orderBy to avoid needing composite index
+      // Recipes are returned in document creation order
+      // TODO: Add composite index and re-enable orderBy for better UX
       Query query = firestore.collection(recipesCollection)
-          .whereEqualTo("userId", userId)
-          .orderBy("createdAt", Query.Direction.DESCENDING);
+          .whereEqualTo("userId", userId);
       
       ApiFuture<QuerySnapshot> future = query.get();
       QuerySnapshot querySnapshot = future.get();
@@ -142,6 +144,9 @@ public class RecipeService {
         Recipe recipe = doc.toObject(Recipe.class);
         recipes.add(mapToResponse(recipe));
       });
+      
+      // Sort in-memory by createdAt (newest first)
+      recipes.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
       
       log.info("Found {} recipes for user {}", recipes.size(), userId);
       return recipes;

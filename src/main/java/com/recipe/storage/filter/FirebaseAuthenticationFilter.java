@@ -26,6 +26,7 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
   private static final String BEARER_PREFIX = "Bearer ";
   private static final List<String> ALLOWED_ORIGINS = List.of(
       "http://localhost:5173",
+      "http://localhost:5174",
       "https://recipe-mgmt-dev.web.app",
       "https://recipe-mgmt-dev.firebaseapp.com"
   );

@@ -22,6 +22,7 @@ public class CorsConfig {
         registry.addMapping("/**")
             .allowedOrigins(
                 "http://localhost:5173", // Local development
+                "http://localhost:5174", // Local development (alt port)
                 "https://recipe-mgmt-dev.web.app", // Firebase Hosting (dev)
                 "https://recipe-mgmt-dev.firebaseapp.com" // Firebase Hosting (dev alt)
             )
