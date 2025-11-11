@@ -180,9 +180,14 @@ public class RecipeService {
       }
       
       Recipe recipe = document.toObject(Recipe.class);
+      if (recipe == null) {
+        log.error("Failed to deserialize recipe: {}", recipeId);
+        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+            "Failed to load recipe");
+      }
       
       // Verify user owns this recipe
-      if (recipe != null && !userId.equals(recipe.getUserId())) {
+      if (!userId.equals(recipe.getUserId())) {
         log.warn("User {} attempted to access recipe {} owned by {}", 
             userId, recipeId, recipe.getUserId());
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
