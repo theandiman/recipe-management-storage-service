@@ -88,7 +88,7 @@ Authorization: Bearer <firebase-id-token>
 
 ### Get User's Recipes
 ```http
-GET /api/recipes/user/{userId}
+GET /api/recipes
 Authorization: Bearer <firebase-id-token>
 ```
 
