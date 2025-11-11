@@ -203,6 +203,54 @@ public class RecipeService {
   }
 
   /**
+   * Delete a recipe by ID.
+   *
+   * @param recipeId The recipe ID
+   * @param userId The Firebase user ID (for authorization)
+   * @throws ResponseStatusException if recipe not found or user doesn't have access
+   */
+  public void deleteRecipe(String recipeId, String userId) {
+    if (firestore == null) {
+      log.warn("Firestore not configured - cannot delete recipe");
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
+    }
+    
+    try {
+      DocumentReference docRef = firestore.collection(recipesCollection).document(recipeId);
+      ApiFuture<DocumentSnapshot> future = docRef.get();
+      DocumentSnapshot document = future.get();
+      
+      if (!document.exists()) {
+        log.warn("Recipe not found for deletion: {}", recipeId);
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
+      }
+      
+      Recipe recipe = document.toObject(Recipe.class);
+      if (recipe == null) {
+        log.error("Failed to deserialize recipe for deletion: {}", recipeId);
+        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+            "Failed to load recipe");
+      }
+      
+      // Verify user owns this recipe
+      if (!userId.equals(recipe.getUserId())) {
+        log.warn("User {} attempted to delete recipe {} owned by {}", 
+            userId, recipeId, recipe.getUserId());
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+      }
+      
+      // Delete the document
+      ApiFuture<WriteResult> deleteFuture = docRef.delete();
+      WriteResult result = deleteFuture.get();
+      
+      log.info("Deleted recipe {} for user {} at {}", recipeId, userId, result.getUpdateTime());
+    } catch (InterruptedException | ExecutionException e) {
+      log.error("Error deleting recipe from Firestore", e);
+      throw new RuntimeException("Failed to delete recipe", e);
+    }
+  }
+
+  /**
    * Map Recipe entity to RecipeResponse DTO.
    */
   private RecipeResponse mapToResponse(Recipe recipe) {

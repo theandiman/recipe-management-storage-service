@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -161,5 +162,51 @@ public class RecipeController {
     log.info("Fetching recipe {} for user {}", recipeId, userId);
     RecipeResponse recipe = recipeService.getRecipe(recipeId, userId);
     return ResponseEntity.ok(recipe);
+  }
+
+  /**
+   * Delete a recipe by ID.
+   * Requires Firebase authentication and user must own the recipe.
+   *
+   * @param recipeId The recipe ID to delete
+   * @param userId The authenticated user's Firebase UID (injected by auth filter)
+   * @return 204 No Content on successful deletion
+   */
+  @DeleteMapping("/{recipeId}")
+  @Operation(
+      summary = "Delete a recipe by ID",
+      description = "Deletes a recipe by its ID. User must own the recipe to delete it. "
+          + "Requires Firebase authentication token in Authorization header."
+  )
+  @ApiResponses(value = {
+      @ApiResponse(
+          responseCode = "204",
+          description = "Recipe deleted successfully",
+          content = @Content
+      ),
+      @ApiResponse(
+          responseCode = "401",
+          description = "Unauthorized - invalid or missing Firebase token",
+          content = @Content
+      ),
+      @ApiResponse(
+          responseCode = "403",
+          description = "Forbidden - user does not own this recipe",
+          content = @Content
+      ),
+      @ApiResponse(
+          responseCode = "404",
+          description = "Recipe not found",
+          content = @Content
+      )
+  })
+  public ResponseEntity<Void> deleteRecipe(
+      @Parameter(description = "Recipe ID to delete", required = true)
+      @PathVariable String recipeId,
+      @Parameter(hidden = true) @RequestAttribute("userId") String userId) {
+    
+    log.info("Deleting recipe {} for user {}", recipeId, userId);
+    recipeService.deleteRecipe(recipeId, userId);
+    return ResponseEntity.noContent().build();
   }
 }
