@@ -1,15 +1,17 @@
 steps:
-  # Run Maven tests
+  # Run Maven tests (parallel with linting)
   - name: 'maven:3.9-eclipse-temurin-17'
     id: 'test-storage'
     entrypoint: 'mvn'
-    args: ['test']
+    args: ['test', '-B', '-Dmaven.repo.local=/workspace/.m2/repository']
+    waitFor: ['-']  # Run in parallel (don't wait for previous steps)
 
-  # Run linting (Checkstyle)
+  # Run linting (Checkstyle) - parallel with tests
   - name: 'maven:3.9-eclipse-temurin-17'
     id: 'lint-storage'
     entrypoint: 'mvn'
-    args: ['verify', '-DskipTests']
+    args: ['checkstyle:check', '-B', '-Dmaven.repo.local=/workspace/.m2/repository']
+    waitFor: ['-']  # Run in parallel (don't wait for previous steps)
 
   # Build the application JAR (skip on PR builds)
   - name: 'maven:3.9-eclipse-temurin-17'
@@ -26,7 +28,8 @@ steps:
         fi
         
         echo "Building application package..."
-        mvn package -DskipTests
+        mvn package -DskipTests -B -Dmaven.repo.local=/workspace/.m2/repository
+    waitFor: ['test-storage', 'lint-storage']  # Wait for tests and linting to complete
 
   # Build Docker image - ONLY on main branch
   - name: 'gcr.io/cloud-builders/docker'
@@ -105,6 +108,10 @@ substitutions:
 options:
   machineType: 'E2_HIGHCPU_8'
   logging: CLOUD_LOGGING_ONLY
+  # Enable caching for faster builds
+  volumes:
+  - name: 'm2'
+    path: '/workspace/.m2'
 
-# Timeout after 20 minutes
-timeout: '1200s'
+# Timeout after 10 minutes (reduced from 20)
+timeout: '600s'
