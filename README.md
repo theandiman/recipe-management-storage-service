@@ -18,7 +18,7 @@ The Recipe Storage Service provides a REST API for storing, retrieving, and mana
 
 ## Features
 
-- ✅ CRUD operations for recipes
+- ✅ Create and read operations for recipes
 - ✅ Firebase Authentication integration
 - ✅ Firestore database persistence
 - ✅ OpenAPI/Swagger documentation
