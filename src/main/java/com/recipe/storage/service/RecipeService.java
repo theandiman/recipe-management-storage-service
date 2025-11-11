@@ -140,7 +140,11 @@ public class RecipeService {
       List<RecipeResponse> recipes = new ArrayList<>();
       querySnapshot.getDocuments().forEach(doc -> {
         Recipe recipe = doc.toObject(Recipe.class);
-        recipes.add(mapToResponse(recipe));
+        if (recipe != null) {
+          recipes.add(mapToResponse(recipe));
+        } else {
+          log.warn("Failed to deserialize recipe document: {}", doc.getId());
+        }
       });
       
       log.info("Found {} recipes for user {}", recipes.size(), userId);
