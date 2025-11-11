@@ -10,7 +10,7 @@ steps:
   - name: 'maven:3.9-eclipse-temurin-17'
     id: 'lint-storage'
     entrypoint: 'mvn'
-    args: ['checkstyle:check', '-B', '-Dmaven.repo.local=/workspace/.m2/repository']
+    args: ['validate', '-B', '-Dmaven.repo.local=/workspace/.m2/repository']
     waitFor: ['-']  # Run in parallel (don't wait for previous steps)
 
   # Build the application JAR (skip on PR builds)
