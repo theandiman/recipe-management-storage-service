@@ -90,7 +90,7 @@ steps:
           --memory 512Mi \
           --cpu 1 \
           --timeout 300 \
-          --max-instances 10 \
+          --max-instances 1 \
           --set-env-vars SPRING_PROFILES_ACTIVE=production \
           --set-env-vars FIREBASE_PROJECT_ID=recipe-mgmt-dev \
           --set-env-vars AUTH_ENABLED=true \
