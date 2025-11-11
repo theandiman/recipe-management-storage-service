@@ -140,11 +140,7 @@ public class RecipeService {
       List<RecipeResponse> recipes = new ArrayList<>();
       querySnapshot.getDocuments().forEach(doc -> {
         Recipe recipe = doc.toObject(Recipe.class);
-        if (recipe != null) {
-          recipes.add(mapToResponse(recipe));
-        } else {
-          log.warn("Failed to deserialize recipe document: {}", doc.getId());
-        }
+        recipes.add(mapToResponse(recipe));
       });
       
       log.info("Found {} recipes for user {}", recipes.size(), userId);
@@ -180,14 +176,9 @@ public class RecipeService {
       }
       
       Recipe recipe = document.toObject(Recipe.class);
-      if (recipe == null) {
-        log.error("Failed to deserialize recipe: {}", recipeId);
-        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-            "Failed to load recipe");
-      }
       
       // Verify user owns this recipe
-      if (!userId.equals(recipe.getUserId())) {
+      if (recipe != null && !userId.equals(recipe.getUserId())) {
         log.warn("User {} attempted to access recipe {} owned by {}", 
             userId, recipeId, recipe.getUserId());
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
