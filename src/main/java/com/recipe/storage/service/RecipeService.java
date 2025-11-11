@@ -2,18 +2,25 @@ package com.recipe.storage.service;
 
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.DocumentReference;
+import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.cloud.firestore.Firestore;
+import com.google.cloud.firestore.Query;
+import com.google.cloud.firestore.QuerySnapshot;
 import com.google.cloud.firestore.WriteResult;
 import com.recipe.storage.dto.CreateRecipeRequest;
 import com.recipe.storage.dto.RecipeResponse;
 import com.recipe.storage.model.Recipe;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Service for managing recipes in Firestore.
@@ -108,6 +115,81 @@ public class RecipeService {
     
     log.info("Mock recipe created with ID: {}", recipeId);
     return mapToResponse(recipe);
+  }
+
+  /**
+   * Get all recipes for a specific user.
+   *
+   * @param userId The Firebase user ID
+   * @return List of recipes belonging to the user
+   */
+  public List<RecipeResponse> getUserRecipes(String userId) {
+    if (firestore == null) {
+      log.warn("Firestore not configured - returning empty list");
+      return new ArrayList<>();
+    }
+    
+    try {
+      Query query = firestore.collection(recipesCollection)
+          .whereEqualTo("userId", userId)
+          .orderBy("createdAt", Query.Direction.DESCENDING);
+      
+      ApiFuture<QuerySnapshot> future = query.get();
+      QuerySnapshot querySnapshot = future.get();
+      
+      List<RecipeResponse> recipes = new ArrayList<>();
+      querySnapshot.getDocuments().forEach(doc -> {
+        Recipe recipe = doc.toObject(Recipe.class);
+        recipes.add(mapToResponse(recipe));
+      });
+      
+      log.info("Found {} recipes for user {}", recipes.size(), userId);
+      return recipes;
+    } catch (InterruptedException | ExecutionException e) {
+      log.error("Error fetching recipes from Firestore", e);
+      throw new RuntimeException("Failed to fetch recipes", e);
+    }
+  }
+
+  /**
+   * Get a specific recipe by ID.
+   *
+   * @param recipeId The recipe ID
+   * @param userId The Firebase user ID (for authorization)
+   * @return The recipe if found and user has access
+   * @throws ResponseStatusException if recipe not found or user doesn't have access
+   */
+  public RecipeResponse getRecipe(String recipeId, String userId) {
+    if (firestore == null) {
+      log.warn("Firestore not configured - cannot fetch recipe");
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
+    }
+    
+    try {
+      DocumentReference docRef = firestore.collection(recipesCollection).document(recipeId);
+      ApiFuture<DocumentSnapshot> future = docRef.get();
+      DocumentSnapshot document = future.get();
+      
+      if (!document.exists()) {
+        log.warn("Recipe not found: {}", recipeId);
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
+      }
+      
+      Recipe recipe = document.toObject(Recipe.class);
+      
+      // Verify user owns this recipe
+      if (recipe != null && !userId.equals(recipe.getUserId())) {
+        log.warn("User {} attempted to access recipe {} owned by {}", 
+            userId, recipeId, recipe.getUserId());
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+      }
+      
+      log.info("Retrieved recipe {} for user {}", recipeId, userId);
+      return mapToResponse(recipe);
+    } catch (InterruptedException | ExecutionException e) {
+      log.error("Error fetching recipe from Firestore", e);
+      throw new RuntimeException("Failed to fetch recipe", e);
+    }
   }
 
   /**
