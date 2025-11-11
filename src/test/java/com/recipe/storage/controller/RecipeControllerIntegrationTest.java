@@ -64,7 +64,8 @@ class RecipeControllerIntegrationTest {
 
         mockMvc.perform(post("/api/recipes")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+                .content(objectMapper.writeValueAsString(request))
+                .header("X-User-ID", "test-user"))
             .andExpect(status().isBadRequest());
     }
 
@@ -80,7 +81,8 @@ class RecipeControllerIntegrationTest {
 
         mockMvc.perform(post("/api/recipes")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+                .content(objectMapper.writeValueAsString(request))
+                .header("X-User-ID", "test-user"))
             .andExpect(status().isBadRequest());
     }
 
