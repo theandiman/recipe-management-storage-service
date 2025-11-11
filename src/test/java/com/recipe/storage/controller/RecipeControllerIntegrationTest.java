@@ -12,6 +12,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -82,5 +83,68 @@ class RecipeControllerIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getUserRecipes_Success() throws Exception {
+        // First create a recipe
+        CreateRecipeRequest request = CreateRecipeRequest.builder()
+            .title("Test Recipe for List")
+            .description("Test description")
+            .ingredients(List.of("ingredient1", "ingredient2"))
+            .instructions(List.of("step1", "step2"))
+            .servings(2)
+            .source("test")
+            .build();
+
+        mockMvc.perform(post("/api/recipes")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+                .header("X-User-ID", "user-list-test"))
+            .andExpect(status().isCreated());
+
+        // Now fetch all recipes for the user
+        mockMvc.perform(get("/api/recipes")
+                .header("X-User-ID", "user-list-test"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$").isArray());
+    }
+
+    @Test
+    void getRecipe_Success() throws Exception {
+        // First create a recipe
+        CreateRecipeRequest request = CreateRecipeRequest.builder()
+            .title("Specific Recipe")
+            .description("Get this one")
+            .ingredients(List.of("ingredient1"))
+            .instructions(List.of("step1"))
+            .servings(1)
+            .source("test")
+            .build();
+
+        String response = mockMvc.perform(post("/api/recipes")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+                .header("X-User-ID", "user456"))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+        String recipeId = objectMapper.readTree(response).get("id").asText();
+
+        // Now fetch the specific recipe
+        mockMvc.perform(get("/api/recipes/" + recipeId)
+                .header("X-User-ID", "user456"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(recipeId))
+            .andExpect(jsonPath("$.title").value("Specific Recipe"));
+    }
+
+    @Test
+    void getRecipe_NotFound() throws Exception {
+        mockMvc.perform(get("/api/recipes/nonexistent-id")
+                .header("X-User-ID", "user123"))
+            .andExpect(status().isNotFound());
     }
 }
