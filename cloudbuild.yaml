@@ -67,7 +67,7 @@ steps:
 
   # Note: Cloud Run deployment is managed by Terraform
   # After image is pushed, trigger Terraform apply to update the service
-  # See: recipe-management-infrastructure/terraform/environments/dev/main.tf
+  # See: recipe-management-infrastructure/terraform/environments/*/main.tf
 
 # Substitutions for different environments
 substitutions:
