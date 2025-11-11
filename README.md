@@ -132,7 +132,7 @@ Authorization: Bearer <firebase-id-token>
    Create `src/main/resources/application-local.properties`:
    ```properties
    # Firebase
-   firebase.project-id=your-firebase-project-id
+   firebase.project.id=your-firebase-project-id
    
    # Firestore
    firestore.collection.recipes=recipes
