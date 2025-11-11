@@ -33,6 +33,12 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
       @NonNull HttpServletResponse response,
       @NonNull FilterChain filterChain) throws ServletException, IOException {
 
+    // Skip auth for OPTIONS requests (CORS preflight)
+    if ("OPTIONS".equals(request.getMethod())) {
+      filterChain.doFilter(request, response);
+      return;
+    }
+
     // Skip auth for health check
     if (request.getRequestURI().contains("/actuator/health")) {
       filterChain.doFilter(request, response);
