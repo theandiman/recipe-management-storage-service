@@ -1,11 +1,13 @@
 package com.recipe.storage.service;
 
 import com.google.api.core.ApiFuture;
+import com.google.cloud.firestore.CollectionReference;
 import com.google.cloud.firestore.DocumentReference;
 import com.google.cloud.firestore.Firestore;
 import com.google.cloud.firestore.WriteResult;
 import com.recipe.storage.dto.CreateRecipeRequest;
 import com.recipe.storage.dto.RecipeResponse;
+import com.recipe.storage.model.Recipe;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -51,10 +53,11 @@ class RecipeServiceTest {
         CreateRecipeRequest request = createValidRequest();
         String userId = "user123";
         
-        when(firestore.collection(anyString())).thenReturn(mock(com.google.cloud.firestore.CollectionReference.class));
-        when(firestore.collection(anyString()).document(anyString())).thenReturn(documentReference);
-        when(documentReference.set(any())).thenReturn(writeResultFuture);
-        when(writeResultFuture.get()).thenReturn(mock(WriteResult.class));
+        com.google.cloud.firestore.CollectionReference collectionRef = mock(com.google.cloud.firestore.CollectionReference.class);
+        when(firestore.collection(anyString())).thenReturn(collectionRef);
+        when(collectionRef.document(anyString())).thenReturn(documentReference);
+        when(documentReference.set(any(Recipe.class))).thenReturn(writeResultFuture);
+        when(writeResultFuture.get()).thenReturn(writeResult);
 
         // Act
         RecipeResponse response = recipeService.saveRecipe(request, userId);
@@ -63,7 +66,9 @@ class RecipeServiceTest {
         assertNotNull(response);
         assertEquals(request.getTitle(), response.getTitle());
         assertEquals(userId, response.getUserId());
+        assertEquals(request.getSource(), response.getSource());
         verify(firestore).collection("recipes");
+        verify(documentReference).set(any(Recipe.class));
     }
 
     @Test
@@ -82,18 +87,21 @@ class RecipeServiceTest {
         assertNotNull(response.getId());
         assertEquals(request.getTitle(), response.getTitle());
         assertEquals(userId, response.getUserId());
-        assertEquals("test-mode", response.getSource());
+        // Source comes from request, not hardcoded to "test-mode"
+        assertEquals(request.getSource(), response.getSource());
     }
 
     @Test
-    void saveRecipe_ValidatesRequiredFields() {
+    void saveRecipe_ValidatesRequiredFields() throws ExecutionException, InterruptedException {
         // Arrange
         CreateRecipeRequest request = createValidRequest();
         String userId = "user123";
 
-        when(firestore.collection(anyString())).thenReturn(mock(com.google.cloud.firestore.CollectionReference.class));
-        when(firestore.collection(anyString()).document(anyString())).thenReturn(documentReference);
-        when(documentReference.getId()).thenReturn("recipe-id-123");
+        com.google.cloud.firestore.CollectionReference collectionRef = mock(com.google.cloud.firestore.CollectionReference.class);
+        when(firestore.collection(anyString())).thenReturn(collectionRef);
+        when(collectionRef.document(anyString())).thenReturn(documentReference);
+        when(documentReference.set(any(Recipe.class))).thenReturn(writeResultFuture);
+        when(writeResultFuture.get()).thenReturn(writeResult);
 
         // Act
         RecipeResponse response = recipeService.saveRecipe(request, userId);
