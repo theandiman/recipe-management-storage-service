@@ -1,20 +1,20 @@
 steps:
   # Run Maven tests (parallel with linting)
-  - name: 'maven:3.9-eclipse-temurin-17'
+  - name: 'maven:3.9-eclipse-temurin-21'
     id: 'test-storage'
     entrypoint: 'mvn'
     args: ['test', '-B', '-Dmaven.repo.local=/workspace/.m2/repository']
     waitFor: ['-']  # Run in parallel (don't wait for previous steps)
 
   # Run linting (Checkstyle) - parallel with tests
-  - name: 'maven:3.9-eclipse-temurin-17'
+  - name: 'maven:3.9-eclipse-temurin-21'
     id: 'lint-storage'
     entrypoint: 'mvn'
     args: ['validate', '-B', '-Dmaven.repo.local=/workspace/.m2/repository']
     waitFor: ['-']  # Run in parallel (don't wait for previous steps)
 
   # Build the application JAR (skip on PR builds)
-  - name: 'maven:3.9-eclipse-temurin-17'
+  - name: 'maven:3.9-eclipse-temurin-21'
     id: 'build-storage'
     entrypoint: 'bash'
     args:
