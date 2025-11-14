@@ -54,13 +54,14 @@ public class CreateRecipeRequest {
   )
   private List<String> instructions;
 
-  @Positive(message = "Prep time must be positive")
-  @Schema(description = "Preparation time in minutes", example = "15")
-  private Integer prepTime;
+    // Timings are optional but if provided must be positive (>0)
+    @Positive(message = "Prep time must be positive")
+    @Schema(description = "Preparation time in minutes", example = "15")
+    private Integer prepTime;
 
-  @Positive(message = "Cook time must be positive")
-  @Schema(description = "Cooking time in minutes", example = "20")
-  private Integer cookTime;
+    @Positive(message = "Cook time must be positive")
+    @Schema(description = "Cooking time in minutes", example = "20")
+    private Integer cookTime;
 
   @NotNull(message = "Servings is required")
   @Positive(message = "Servings must be positive")
