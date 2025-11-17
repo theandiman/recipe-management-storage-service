@@ -1,3 +1,5 @@
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=theandiman_recipe-management-storage-service&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=theandiman_recipe-management-storage-service) [![Sonar Tech Debt](https://img.shields.io/sonar/tech_debt/theandiman_recipe-management-storage-service?server=https://sonarcloud.io)](https://sonarcloud.io/summary/new_code?id=theandiman_recipe-management-storage-service) [![Sonar Violations](https://img.shields.io/sonar/violations/theandiman_recipe-management-storage-service?server=https://sonarcloud.io)](https://sonarcloud.io/summary/new_code?id=theandiman_recipe-management-storage-service) [![Known Vulnerabilities](https://snyk.io/test/github/theandiman/recipe-management-storage-service/badge.svg)](https://snyk.io/test/github/theandiman/recipe-management-storage-service) 
+
 # Recipe Storage Service
 
 A Spring Boot microservice for persisting and managing recipe data using Google Cloud Firestore.
