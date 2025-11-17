@@ -213,6 +213,21 @@ gcloud run deploy recipe-storage-service \
   --platform managed
 ```
 
+### Local Docker Build
+
+If you want to build a Docker image locally with the repository Dockerfile, the Dockerfile expects a prebuilt JAR artifact at `target/*.jar` (CI builds this artifact before running the Docker build). Run the Maven package goal first to create the jar, then build the Docker image:
+
+```bash
+# Build the jar (skip integration tests)
+mvn -DskipITs -DskipTests package
+
+# Then build the Docker image (if Docker is installed locally)
+docker build -t recipe-storage-service:local .
+```
+
+If you'd prefer a single Dockerfile that builds the jar during image build (a builder stage), that can be added but will increase local Docker build times and will download dependencies inside the image.
+
+
 ## Authentication
 
 The service uses Firebase Authentication with JWT tokens:
