@@ -46,6 +46,13 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- Shared library -->
+        <dependency>
+            <groupId>com.recipe</groupId>
+            <artifactId>recipe-management-shared</artifactId>
+            <version>1.0.15</version>
+        </dependency>
+
         <!-- Validation -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
