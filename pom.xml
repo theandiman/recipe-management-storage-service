@@ -50,7 +50,7 @@
         <dependency>
             <groupId>com.recipe</groupId>
             <artifactId>recipe-management-shared</artifactId>
-            <version>1.0.15</version>
+            <version>${recipe-management-shared.version}</version>
         </dependency>
 
         <!-- Validation -->
