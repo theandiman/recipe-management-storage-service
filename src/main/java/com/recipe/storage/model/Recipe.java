@@ -1,5 +1,7 @@
 package com.recipe.storage.model;
 
+import org.springframework.beans.BeanUtils;
+
 /**
  * Recipe entity representing a stored recipe.
  * This extends the shared Recipe model with storage-specific functionality.
@@ -18,7 +20,7 @@ public class Recipe extends com.recipe.shared.model.Recipe {
 
     Recipe recipe = new Recipe();
     // Copy all fields from shared recipe
-    org.springframework.beans.BeanUtils.copyProperties(sharedRecipe, recipe);
+    BeanUtils.copyProperties(sharedRecipe, recipe);
 
     return recipe;
   }

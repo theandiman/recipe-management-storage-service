@@ -62,15 +62,6 @@ public class RecipeResponse {
   @Schema(description = "Total time in minutes", example = "35")
   private Integer totalTimeMinutes;
 
-  @Schema(description = "Preparation time (human readable)", example = "15 minutes")
-  private String prepTime;
-
-  @Schema(description = "Cooking time (human readable)", example = "20 minutes")
-  private String cookTime;
-
-  @Schema(description = "Total time (human readable)", example = "35 minutes")
-  private String totalTime;
-
   @Schema(description = "Number of servings", example = "4")
   private Integer servings;
 

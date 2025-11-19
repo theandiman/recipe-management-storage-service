@@ -251,9 +251,6 @@ public class RecipeService {
     }
   }
 
-  /**
-   * Map Recipe entity to RecipeResponse DTO.
-   */
   private RecipeResponse mapToResponse(Recipe recipe) {
     return RecipeResponse.builder()
         .id(recipe.getId())
@@ -265,9 +262,6 @@ public class RecipeService {
         .prepTimeMinutes(recipe.getPrepTimeMinutes())
         .cookTimeMinutes(recipe.getCookTimeMinutes())
         .totalTimeMinutes(recipe.getTotalTimeMinutes())
-        .prepTime(recipe.getPrepTime())
-        .cookTime(recipe.getCookTime())
-        .totalTime(recipe.getTotalTime())
         .servings(recipe.getServings())
         .nutritionalInfo(recipe.getNutritionalInfo())
         .tips(recipe.getTips())
