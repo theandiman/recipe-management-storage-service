@@ -1,12 +1,20 @@
 # Runtime stage (distroless)
 FROM debian:bookworm-slim AS runtime
+
+# OpenTelemetry agent version - update this when upgrading
+ARG OTEL_AGENT_VERSION=v2.21.0
+ENV OTEL_AGENT_VERSION=${OTEL_AGENT_VERSION}
+
 RUN useradd --system --uid 1000 --create-home --home-dir /home/appuser appuser
 WORKDIR /home/appuser
 
 # Download OpenTelemetry Java agent for Honeycomb integration
-RUN apt-get update && apt-get install -y wget && \
-    wget -O opentelemetry-javaagent.jar https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.42.1/opentelemetry-javaagent.jar && \
-    apt-get remove -y wget && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y wget ca-certificates && \
+    wget -O opentelemetry-javaagent.jar \
+         https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/${OTEL_AGENT_VERSION}/opentelemetry-javaagent.jar && \
+    # Verify the download was successful and has content
+    [ -s opentelemetry-javaagent.jar ] && echo "✅ OpenTelemetry agent downloaded successfully" || (echo "❌ Failed to download OpenTelemetry agent" && exit 1) && \
+    apt-get remove -y wget ca-certificates && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Copy jar and set ownership to non-root user
 COPY target/*.jar /home/appuser/app.jar
