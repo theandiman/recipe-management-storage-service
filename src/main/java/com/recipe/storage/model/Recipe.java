@@ -1,47 +1,76 @@
 package com.recipe.storage.model;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.Map;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
 /**
  * Recipe entity representing a stored recipe.
+ * This extends the shared Recipe model with storage-specific functionality.
  */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class Recipe {
+public class Recipe extends com.recipe.shared.model.Recipe {
 
-  private String id; // Firestore document ID
-  private String userId; // Firebase user ID who created/saved the recipe
-  private String title;
-  private String description;
-  private List<String> ingredients;
-  private List<String> instructions;
-  private Integer prepTime; // in minutes
-  private Integer cookTime; // in minutes
-  private Integer servings;
-  
-  // Nutrition information
-  private Map<String, Object> nutrition;
-  
-  // Tips from AI generation
-  private Map<String, List<String>> tips;
-  
-  // Image URL if generated
-  private String imageUrl;
-  
-  // Metadata
-  private String source; // e.g., "ai-generated", "manual"
-  private Instant createdAt;
-  private Instant updatedAt;
-  
-  // Tags for categorization
-  private List<String> tags;
-  private List<String> dietaryRestrictions;
+  // Additional storage-specific methods can be added here if needed
+
+  /**
+   * Creates a Recipe from the shared Recipe model.
+   */
+  public static Recipe fromShared(com.recipe.shared.model.Recipe sharedRecipe) {
+    if (sharedRecipe == null) {
+      return null;
+    }
+
+    Recipe recipe = new Recipe();
+    // Copy all fields from shared recipe
+    recipe.setId(sharedRecipe.getId());
+    recipe.setUserId(sharedRecipe.getUserId());
+    recipe.setRecipeName(sharedRecipe.getRecipeName());
+    recipe.setDescription(sharedRecipe.getDescription());
+    recipe.setIngredients(sharedRecipe.getIngredients());
+    recipe.setInstructions(sharedRecipe.getInstructions());
+    recipe.setPrepTimeMinutes(sharedRecipe.getPrepTimeMinutes());
+    recipe.setCookTimeMinutes(sharedRecipe.getCookTimeMinutes());
+    recipe.setTotalTimeMinutes(sharedRecipe.getTotalTimeMinutes());
+    recipe.setPrepTime(sharedRecipe.getPrepTime());
+    recipe.setCookTime(sharedRecipe.getCookTime());
+    recipe.setTotalTime(sharedRecipe.getTotalTime());
+    recipe.setServings(sharedRecipe.getServings());
+    recipe.setNutritionalInfo(sharedRecipe.getNutritionalInfo());
+    recipe.setTips(sharedRecipe.getTips());
+    recipe.setImageUrl(sharedRecipe.getImageUrl());
+    recipe.setSource(sharedRecipe.getSource());
+    recipe.setCreatedAt(sharedRecipe.getCreatedAt());
+    recipe.setUpdatedAt(sharedRecipe.getUpdatedAt());
+    recipe.setTags(sharedRecipe.getTags());
+    recipe.setDietaryRestrictions(sharedRecipe.getDietaryRestrictions());
+    recipe.setImageGeneration(sharedRecipe.getImageGeneration());
+
+    return recipe;
+  }
+
+  /**
+   * Converts to shared Recipe model.
+   */
+  public com.recipe.shared.model.Recipe toShared() {
+    return com.recipe.shared.model.Recipe.builder()
+        .id(getId())
+        .userId(getUserId())
+        .recipeName(getRecipeName())
+        .description(getDescription())
+        .ingredients(getIngredients())
+        .instructions(getInstructions())
+        .prepTimeMinutes(getPrepTimeMinutes())
+        .cookTimeMinutes(getCookTimeMinutes())
+        .totalTimeMinutes(getTotalTimeMinutes())
+        .prepTime(getPrepTime())
+        .cookTime(getCookTime())
+        .totalTime(getTotalTime())
+        .servings(getServings())
+        .nutritionalInfo(getNutritionalInfo())
+        .tips(getTips())
+        .imageUrl(getImageUrl())
+        .source(getSource())
+        .createdAt(getCreatedAt())
+        .updatedAt(getUpdatedAt())
+        .tags(getTags())
+        .dietaryRestrictions(getDietaryRestrictions())
+        .imageGeneration(getImageGeneration())
+        .build();
+  }
 }

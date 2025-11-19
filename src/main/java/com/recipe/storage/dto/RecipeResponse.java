@@ -1,9 +1,10 @@
 package com.recipe.storage.dto;
 
+import com.recipe.shared.model.NutritionalInfo;
+import com.recipe.shared.model.RecipeTips;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -31,8 +32,8 @@ public class RecipeResponse {
   )
   private String userId;
 
-  @Schema(description = "Recipe title", example = "Spaghetti Carbonara")
-  private String title;
+  @Schema(description = "Recipe name", example = "Spaghetti Carbonara")
+  private String recipeName;
 
   @Schema(
       description = "Recipe description",
@@ -53,26 +54,37 @@ public class RecipeResponse {
   private List<String> instructions;
 
   @Schema(description = "Preparation time in minutes", example = "15")
-  private Integer prepTime;
+  private Integer prepTimeMinutes;
 
   @Schema(description = "Cooking time in minutes", example = "20")
-  private Integer cookTime;
+  private Integer cookTimeMinutes;
+
+  @Schema(description = "Total time in minutes", example = "35")
+  private Integer totalTimeMinutes;
+
+  @Schema(description = "Preparation time (human readable)", example = "15 minutes")
+  private String prepTime;
+
+  @Schema(description = "Cooking time (human readable)", example = "20 minutes")
+  private String cookTime;
+
+  @Schema(description = "Total time (human readable)", example = "35 minutes")
+  private String totalTime;
 
   @Schema(description = "Number of servings", example = "4")
   private Integer servings;
 
   @Schema(
-      description = "Nutritional information per serving",
-      example = "{\"calories\": 450, \"protein\": 20, \"carbs\": 55, \"fat\": 18}"
+      description = "Structured nutritional information",
+      example = "{\"perServing\": {\"calories\": 450, \"protein\": 20}}"
   )
-  private Map<String, Object> nutrition;
+  private NutritionalInfo nutritionalInfo;
 
   @Schema(
-      description = "Cooking tips organized by category",
-      example = "{\"prep\": [\"Use room temperature eggs\"], "
-          + "\"serving\": [\"Serve immediately\"]}"
+      description = "Recipe tips and additional information",
+      example = "{\"substitutions\": [\"Use turkey bacon instead of pancetta\"]}"
   )
-  private Map<String, List<String>> tips;
+  private RecipeTips tips;
 
   @Schema(
       description = "URL to recipe image",
