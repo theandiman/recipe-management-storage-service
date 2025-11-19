@@ -13,13 +13,71 @@ The Recipe Storage Service provides a REST API for storing, retrieving, and mana
 
 ## Technology Stack
 
-- **Java 17**
+- **Java 21**
 - **Spring Boot 3.4.0**
 - **Firebase Admin SDK 9.3.0** - Authentication & Firestore
 - **Google Cloud Firestore** - NoSQL database
 - **Lombok** - Reduce boilerplate code
 - **OpenAPI/Swagger** - API documentation
 - **Maven** - Build & dependency management
+- **Honeycomb** - Centralized observability (traces, metrics, logs)
+- **OpenTelemetry** - Telemetry collection
+
+## Observability
+
+The service integrates with [Honeycomb](https://www.honeycomb.io/) for centralized observability, providing distributed tracing, metrics, and structured logging.
+
+### Features
+
+- ✅ **Distributed Tracing** - Track requests across service boundaries
+- ✅ **Application Metrics** - JVM, HTTP, and custom business metrics
+- ✅ **Structured Logging** - Consistent log format with trace correlation
+- ✅ **Error Tracking** - Detailed error context and stack traces
+- ✅ **Performance Monitoring** - Response times, throughput, and latency
+
+### Local Development
+
+1. **Set Honeycomb API Key**
+   ```bash
+   export HONEYCOMB_API_KEY=your_api_key_here
+   ```
+
+2. **Start with observability**
+   ```bash
+   ./start-with-observability.sh
+   ```
+
+   Or manually:
+   ```bash
+   # Download OpenTelemetry agent
+   curl -L -o opentelemetry-javaagent.jar \
+     https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.42.1/opentelemetry-javaagent.jar
+
+   # Start with agent
+   java -javaagent:opentelemetry-javaagent.jar \
+        -Dotel.service.name=recipe-storage-service \
+        -Dotel.exporter.otlp.endpoint=https://api.honeycomb.io:443 \
+        -Dotel.exporter.otlp.headers=api-key=$HONEYCOMB_API_KEY \
+        -jar target/recipe-storage-service-0.0.1-SNAPSHOT.jar
+   ```
+
+### Production Deployment
+
+The OpenTelemetry Java agent is automatically included in the Docker image and configured via environment variables:
+
+```yaml
+# In your deployment configuration
+environment:
+  - HONEYCOMB_API_KEY=your_production_api_key
+  - OTEL_SERVICE_NAME=recipe-storage-service
+  - OTEL_SERVICE_VERSION=0.0.1-SNAPSHOT
+```
+
+### Viewing Traces & Metrics
+
+- **Honeycomb UI**: https://ui.honeycomb.io/
+- **Service Dashboard**: Filter by `service.name=recipe-storage-service`
+- **Trace Correlation**: All logs include `trace_id` and `span_id` for correlation
 
 ## Features
 
