@@ -1,17 +1,49 @@
 steps:
+  # Configure Maven settings to authenticate to Artifact Registry via an access token
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'configure-maven-settings'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        mkdir -p /workspace/.m2
+        # Generate a minimal Maven settings.xml with server credentials for Artifact Registry
+        # This avoids reliance on gcloud's print-settings subcommand which may not be available
+        cat > /workspace/.m2/settings.xml <<'SETTINGS'
+        <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
+          <servers>
+            <server>
+              <id>gcp-maven-proxy</id>
+              <username>oauth2accesstoken</username>
+              <password>@@ACCESS_TOKEN@@</password>
+            </server>
+          </servers>
+        </settings>
+        SETTINGS
+        # Replace placeholder with runtime access token (error out if token cannot be retrieved)
+        # Replace placeholder in the settings.xml with a runtime access token
+        sed -i "s|@@ACCESS_TOKEN@@|$(gcloud auth print-access-token)|g" /workspace/.m2/settings.xml
+        # Verify the token is populated; fail if empty to avoid unauthorized Maven requests
+        if ! grep -q -E "<password>[^<]+</password>" /workspace/.m2/settings.xml; then
+          echo "ERROR: settings.xml not properly configured with access token"
+          exit 1
+        fi
+
   # Run Maven tests (parallel with linting)
   - name: 'maven:3.9-eclipse-temurin-21'
     id: 'test-storage'
     entrypoint: 'mvn'
-    args: ['test', '-B', '-Dmaven.repo.local=/workspace/.m2/repository']
-    waitFor: ['-']  # Run in parallel (don't wait for previous steps)
+    args: ['-s', '/workspace/.m2/settings.xml', 'test', '-B', '-Dmaven.repo.local=/workspace/.m2/repository']
+    waitFor: ['configure-maven-settings']  # Wait for Maven settings to be configured
 
   # Run linting (Checkstyle) - parallel with tests
   - name: 'maven:3.9-eclipse-temurin-21'
     id: 'lint-storage'
     entrypoint: 'mvn'
-    args: ['validate', '-B', '-Dmaven.repo.local=/workspace/.m2/repository']
-    waitFor: ['-']  # Run in parallel (don't wait for previous steps)
+    args: ['-s', '/workspace/.m2/settings.xml', 'validate', '-B', '-Dmaven.repo.local=/workspace/.m2/repository']
+    waitFor: ['configure-maven-settings']  # Wait for Maven settings to be configured
 
   # Build the application JAR (skip on PR builds)
   - name: 'maven:3.9-eclipse-temurin-21'
@@ -22,7 +54,7 @@ steps:
       - |
         
         echo "Building application package..."
-        mvn package -DskipTests -B -Dmaven.repo.local=/workspace/.m2/repository
+        mvn -s /workspace/.m2/settings.xml package -DskipTests -B -Dmaven.repo.local=/workspace/.m2/repository
     waitFor: ['test-storage', 'lint-storage']  # Wait for tests and linting to complete
 
   # Build Docker image - ONLY on main branch
