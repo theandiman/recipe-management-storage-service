@@ -18,28 +18,7 @@ public class Recipe extends com.recipe.shared.model.Recipe {
 
     Recipe recipe = new Recipe();
     // Copy all fields from shared recipe
-    recipe.setId(sharedRecipe.getId());
-    recipe.setUserId(sharedRecipe.getUserId());
-    recipe.setRecipeName(sharedRecipe.getRecipeName());
-    recipe.setDescription(sharedRecipe.getDescription());
-    recipe.setIngredients(sharedRecipe.getIngredients());
-    recipe.setInstructions(sharedRecipe.getInstructions());
-    recipe.setPrepTimeMinutes(sharedRecipe.getPrepTimeMinutes());
-    recipe.setCookTimeMinutes(sharedRecipe.getCookTimeMinutes());
-    recipe.setTotalTimeMinutes(sharedRecipe.getTotalTimeMinutes());
-    recipe.setPrepTime(sharedRecipe.getPrepTime());
-    recipe.setCookTime(sharedRecipe.getCookTime());
-    recipe.setTotalTime(sharedRecipe.getTotalTime());
-    recipe.setServings(sharedRecipe.getServings());
-    recipe.setNutritionalInfo(sharedRecipe.getNutritionalInfo());
-    recipe.setTips(sharedRecipe.getTips());
-    recipe.setImageUrl(sharedRecipe.getImageUrl());
-    recipe.setSource(sharedRecipe.getSource());
-    recipe.setCreatedAt(sharedRecipe.getCreatedAt());
-    recipe.setUpdatedAt(sharedRecipe.getUpdatedAt());
-    recipe.setTags(sharedRecipe.getTags());
-    recipe.setDietaryRestrictions(sharedRecipe.getDietaryRestrictions());
-    recipe.setImageGeneration(sharedRecipe.getImageGeneration());
+    org.springframework.beans.BeanUtils.copyProperties(sharedRecipe, recipe);
 
     return recipe;
   }
