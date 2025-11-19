@@ -49,15 +49,12 @@ The service integrates with [Honeycomb](https://www.honeycomb.io/) for centraliz
 
    Or manually:
    ```bash
-   # Download OpenTelemetry agent
+   # Download OpenTelemetry agent (latest version will be used automatically)
    curl -L -o opentelemetry-javaagent.jar \
-     https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.42.1/opentelemetry-javaagent.jar
+     https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v2.21.0/opentelemetry-javaagent.jar
 
    # Start with agent
    java -javaagent:opentelemetry-javaagent.jar \
-        -Dotel.service.name=recipe-storage-service \
-        -Dotel.exporter.otlp.endpoint=https://api.honeycomb.io:443 \
-        -Dotel.exporter.otlp.headers=api-key=$HONEYCOMB_API_KEY \
         -jar target/recipe-storage-service-0.0.1-SNAPSHOT.jar
    ```
 
@@ -69,8 +66,7 @@ The OpenTelemetry Java agent is automatically included in the Docker image and c
 # In your deployment configuration
 environment:
   - HONEYCOMB_API_KEY=your_production_api_key
-  - OTEL_SERVICE_NAME=recipe-storage-service
-  - OTEL_SERVICE_VERSION=0.0.1-SNAPSHOT
+  - SERVICE_VERSION=0.0.1-SNAPSHOT  # Optional: override default version
 ```
 
 ### Viewing Traces & Metrics
