@@ -64,7 +64,7 @@ class RecipeServiceTest {
 
         // Assert
         assertNotNull(response);
-        assertEquals(request.getTitle(), response.getTitle());
+        assertEquals(request.getRecipeName(), response.getRecipeName());
         assertEquals(userId, response.getUserId());
         assertEquals(request.getSource(), response.getSource());
         verify(firestore).collection("recipes");
@@ -85,7 +85,7 @@ class RecipeServiceTest {
         // Assert
         assertNotNull(response);
         assertNotNull(response.getId());
-        assertEquals(request.getTitle(), response.getTitle());
+        assertEquals(request.getRecipeName(), response.getRecipeName());
         assertEquals(userId, response.getUserId());
         // Source comes from request, not hardcoded to "test-mode"
         assertEquals(request.getSource(), response.getSource());
@@ -107,7 +107,7 @@ class RecipeServiceTest {
         RecipeResponse response = recipeService.saveRecipe(request, userId);
 
         // Assert
-        assertNotNull(response.getTitle());
+        assertNotNull(response.getRecipeName());
         assertNotNull(response.getIngredients());
         assertNotNull(response.getInstructions());
         assertNotNull(response.getServings());
@@ -115,12 +115,12 @@ class RecipeServiceTest {
 
     private CreateRecipeRequest createValidRequest() {
         return CreateRecipeRequest.builder()
-            .title("Delicious Pasta")
+            .recipeName("Delicious Pasta")
             .description("A wonderful Italian pasta dish")
             .ingredients(List.of("200g pasta", "2 tomatoes", "1 onion"))
             .instructions(List.of("Boil water", "Cook pasta", "Mix ingredients"))
-            .prepTime(15)
-            .cookTime(20)
+            .prepTimeMinutes(15)
+            .cookTimeMinutes(20)
             .servings(4)
             .source("ai-generated")
             .build();

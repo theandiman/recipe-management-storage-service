@@ -32,12 +32,12 @@ class RecipeControllerIntegrationTest {
     @Test
     void createRecipe_Success() throws Exception {
         CreateRecipeRequest request = CreateRecipeRequest.builder()
-            .title("Delicious Pasta")
+            .recipeName("Delicious Pasta")
             .description("A wonderful Italian pasta dish")
             .ingredients(List.of("200g pasta", "2 tomatoes", "1 onion"))
             .instructions(List.of("Boil water", "Cook pasta", "Mix ingredients"))
-            .prepTime(15)
-            .cookTime(20)
+            .prepTimeMinutes(15)
+            .cookTimeMinutes(20)
             .servings(4)
             .source("ai-generated")
             .build();
@@ -48,7 +48,7 @@ class RecipeControllerIntegrationTest {
                 .header("X-User-ID", "user123"))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id").exists())
-            .andExpect(jsonPath("$.title").value("Delicious Pasta"))
+            .andExpect(jsonPath("$.recipeName").value("Delicious Pasta"))
             .andExpect(jsonPath("$.servings").value(4));
     }
 
@@ -72,7 +72,7 @@ class RecipeControllerIntegrationTest {
     @Test
     void createRecipe_EmptyIngredients_ReturnsBadRequest() throws Exception {
         CreateRecipeRequest request = CreateRecipeRequest.builder()
-            .title("Test Recipe")
+            .recipeName("Test Recipe")
             .ingredients(List.of())
             .instructions(List.of("Cook"))
             .servings(4)
