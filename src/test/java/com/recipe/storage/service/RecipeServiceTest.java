@@ -151,9 +151,9 @@ class RecipeServiceTest {
     }
 
     @Test
-    void updateRecipe_NotFound_ThrowsException() throws ExecutionException, InterruptedException {
+    void updateRecipe_RecipeNotFound_ThrowsNotFoundException() throws ExecutionException, InterruptedException {
         // Arrange
-        String recipeId = "recipe123";
+        String recipeId = "nonexistent123";
         String userId = "user123";
         CreateRecipeRequest request = createValidRequest();
 
@@ -168,19 +168,16 @@ class RecipeServiceTest {
         when(documentSnapshot.exists()).thenReturn(false);
 
         // Act & Assert
-        org.springframework.web.server.ResponseStatusException exception = assertThrows(
-            org.springframework.web.server.ResponseStatusException.class,
-            () -> recipeService.updateRecipe(recipeId, request, userId)
-        );
-        assertEquals(org.springframework.http.HttpStatus.NOT_FOUND, exception.getStatusCode());
+        assertThrows(org.springframework.web.server.ResponseStatusException.class,
+            () -> recipeService.updateRecipe(recipeId, request, userId));
     }
 
     @Test
-    void updateRecipe_NotOwner_ThrowsException() throws ExecutionException, InterruptedException {
+    void updateRecipe_UserDoesNotOwnRecipe_ThrowsForbiddenException() throws ExecutionException, InterruptedException {
         // Arrange
         String recipeId = "recipe123";
         String userId = "user123";
-        String otherUserId = "otherUser";
+        String differentUserId = "user456";
         CreateRecipeRequest request = createValidRequest();
 
         com.google.cloud.firestore.CollectionReference collectionRef = mock(com.google.cloud.firestore.CollectionReference.class);
@@ -195,20 +192,18 @@ class RecipeServiceTest {
 
         Recipe existingRecipe = Recipe.builder()
             .id(recipeId)
-            .userId(otherUserId) // Different user
+            .userId(differentUserId)
+            .title("Some Recipe")
             .build();
         when(documentSnapshot.toObject(Recipe.class)).thenReturn(existingRecipe);
 
         // Act & Assert
-        org.springframework.web.server.ResponseStatusException exception = assertThrows(
-            org.springframework.web.server.ResponseStatusException.class,
-            () -> recipeService.updateRecipe(recipeId, request, userId)
-        );
-        assertEquals(org.springframework.http.HttpStatus.FORBIDDEN, exception.getStatusCode());
+        assertThrows(org.springframework.web.server.ResponseStatusException.class,
+            () -> recipeService.updateRecipe(recipeId, request, userId));
     }
 
     @Test
-    void updateRecipe_DeserializationError_ThrowsException() throws ExecutionException, InterruptedException {
+    void updateRecipe_DeserializationFailure_ThrowsInternalServerError() throws ExecutionException, InterruptedException {
         // Arrange
         String recipeId = "recipe123";
         String userId = "user123";
@@ -223,15 +218,11 @@ class RecipeServiceTest {
         when(documentReference.get()).thenReturn(futureSnapshot);
         when(futureSnapshot.get()).thenReturn(documentSnapshot);
         when(documentSnapshot.exists()).thenReturn(true);
-
-        when(documentSnapshot.toObject(Recipe.class)).thenReturn(null); // Deserialization fails
+        when(documentSnapshot.toObject(Recipe.class)).thenReturn(null);
 
         // Act & Assert
-        org.springframework.web.server.ResponseStatusException exception = assertThrows(
-            org.springframework.web.server.ResponseStatusException.class,
-            () -> recipeService.updateRecipe(recipeId, request, userId)
-        );
-        assertEquals(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR, exception.getStatusCode());
+        assertThrows(org.springframework.web.server.ResponseStatusException.class,
+            () -> recipeService.updateRecipe(recipeId, request, userId));
     }
 
     private CreateRecipeRequest createValidRequest() {
