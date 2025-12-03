@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
  * Recipe entity representing a stored recipe.
  */
 @Data
-@Builder
+@Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class Recipe {
