@@ -209,4 +209,62 @@ public class RecipeController {
     recipeService.deleteRecipe(recipeId, userId);
     return ResponseEntity.noContent().build();
   }
+
+  /**
+   * Update a recipe by ID.
+   * Requires Firebase authentication and user must own the recipe.
+   *
+   * @param recipeId The recipe ID to update
+   * @param request The recipe update request
+   * @param userId The authenticated user's Firebase UID (injected by auth filter)
+   * @return The updated recipe
+   */
+  @org.springframework.web.bind.annotation.PutMapping("/{recipeId}")
+  @Operation(
+      summary = "Update a recipe by ID",
+      description = "Updates a recipe by its ID. User must own the recipe to update it. "
+          + "Requires Firebase authentication token in Authorization header."
+  )
+  @ApiResponses(value = {
+      @ApiResponse(
+          responseCode = "200",
+          description = "Recipe updated successfully",
+          content = @Content(schema = @Schema(implementation = RecipeResponse.class))
+      ),
+      @ApiResponse(
+          responseCode = "400",
+          description = "Invalid request body (missing required fields or validation errors)",
+          content = @Content
+      ),
+      @ApiResponse(
+          responseCode = "401",
+          description = "Unauthorized - invalid or missing Firebase token",
+          content = @Content
+      ),
+      @ApiResponse(
+          responseCode = "403",
+          description = "Forbidden - user does not own this recipe",
+          content = @Content
+      ),
+      @ApiResponse(
+          responseCode = "404",
+          description = "Recipe not found",
+          content = @Content
+      )
+  })
+  public ResponseEntity<RecipeResponse> updateRecipe(
+      @Parameter(description = "Recipe ID to update", required = true)
+      @PathVariable String recipeId,
+      @io.swagger.v3.oas.annotations.parameters.RequestBody(
+          description = "Recipe details to update",
+          required = true,
+          content = @Content(schema = @Schema(implementation = CreateRecipeRequest.class))
+      )
+      @Valid @RequestBody CreateRecipeRequest request,
+      @Parameter(hidden = true) @RequestAttribute("userId") String userId) {
+
+    log.info("Updating recipe {} for user {}", recipeId, userId);
+    RecipeResponse response = recipeService.updateRecipe(recipeId, request, userId);
+    return ResponseEntity.ok(response);
+  }
 }

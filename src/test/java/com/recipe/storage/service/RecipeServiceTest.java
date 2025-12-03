@@ -113,6 +113,43 @@ class RecipeServiceTest {
         assertNotNull(response.getServings());
     }
 
+    @Test
+    void updateRecipe_WithFirestore_Success() throws ExecutionException, InterruptedException {
+        // Arrange
+        String recipeId = "recipe123";
+        String userId = "user123";
+        CreateRecipeRequest request = createValidRequest();
+        request.setTitle("Updated Title");
+
+        com.google.cloud.firestore.CollectionReference collectionRef = mock(com.google.cloud.firestore.CollectionReference.class);
+        when(firestore.collection(anyString())).thenReturn(collectionRef);
+        when(collectionRef.document(recipeId)).thenReturn(documentReference);
+
+        ApiFuture<com.google.cloud.firestore.DocumentSnapshot> futureSnapshot = mock(ApiFuture.class);
+        com.google.cloud.firestore.DocumentSnapshot documentSnapshot = mock(com.google.cloud.firestore.DocumentSnapshot.class);
+        when(documentReference.get()).thenReturn(futureSnapshot);
+        when(futureSnapshot.get()).thenReturn(documentSnapshot);
+        when(documentSnapshot.exists()).thenReturn(true);
+
+        Recipe existingRecipe = Recipe.builder()
+            .id(recipeId)
+            .userId(userId)
+            .title("Old Title")
+            .build();
+        when(documentSnapshot.toObject(Recipe.class)).thenReturn(existingRecipe);
+
+        when(documentReference.set(any(Recipe.class))).thenReturn(writeResultFuture);
+        when(writeResultFuture.get()).thenReturn(writeResult);
+
+        // Act
+        RecipeResponse response = recipeService.updateRecipe(recipeId, request, userId);
+
+        // Assert
+        assertNotNull(response);
+        assertEquals("Updated Title", response.getTitle());
+        verify(documentReference).set(any(Recipe.class));
+    }
+
     private CreateRecipeRequest createValidRequest() {
         return CreateRecipeRequest.builder()
             .title("Delicious Pasta")
