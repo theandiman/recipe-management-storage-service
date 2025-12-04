@@ -80,7 +80,7 @@ public class RecipeController {
       @Valid @RequestBody CreateRecipeRequest request,
       @Parameter(hidden = true) @RequestAttribute("userId") String userId) {
     
-    log.info("Saving recipe '{}' for user {}", request.getTitle(), userId);
+    log.info("Saving recipe '{}' for user {}", request.getRecipeName(), userId);
     RecipeResponse response = recipeService.saveRecipe(request, userId);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }

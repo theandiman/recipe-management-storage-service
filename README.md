@@ -66,6 +66,8 @@ The OpenTelemetry Java agent is automatically included in the Docker image and c
 # In your deployment configuration
 environment:
   - HONEYCOMB_API_KEY=your_production_api_key
+  - OTEL_SERVICE_NAME=recipe-storage-service
+  - OTEL_SERVICE_VERSION=0.0.1-SNAPSHOT
   - SERVICE_VERSION=0.0.1-SNAPSHOT  # Optional: override default version
 ```
 

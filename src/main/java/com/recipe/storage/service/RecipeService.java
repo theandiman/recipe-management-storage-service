@@ -52,17 +52,17 @@ public class RecipeService {
       String recipeId = UUID.randomUUID().toString();
       Instant now = Instant.now();
 
-      Recipe recipe = Recipe.builder()
+      com.recipe.shared.model.Recipe sharedRecipe = com.recipe.shared.model.Recipe.builder()
           .id(recipeId)
           .userId(userId)
-          .title(request.getTitle())
+          .recipeName(request.getRecipeName())
           .description(request.getDescription())
           .ingredients(request.getIngredients())
           .instructions(request.getInstructions())
-          .prepTime(request.getPrepTime())
-          .cookTime(request.getCookTime())
+          .prepTimeMinutes(request.getPrepTimeMinutes())
+          .cookTimeMinutes(request.getCookTimeMinutes())
           .servings(request.getServings())
-          .nutrition(request.getNutrition())
+          .nutritionalInfo(request.getNutritionalInfo())
           .tips(request.getTips())
           .imageUrl(request.getImageUrl())
           .source(request.getSource())
@@ -71,6 +71,8 @@ public class RecipeService {
           .createdAt(now)
           .updatedAt(now)
           .build();
+
+      Recipe recipe = Recipe.fromShared(sharedRecipe);
 
       DocumentReference docRef = firestore.collection(recipesCollection).document(recipeId);
       ApiFuture<WriteResult> future = docRef.set(recipe);
@@ -86,24 +88,21 @@ public class RecipeService {
     }
   }
 
-  /**
-   * Create mock response for testing without Firestore.
-   */
   private RecipeResponse createMockResponse(CreateRecipeRequest request, String userId) {
     String recipeId = UUID.randomUUID().toString();
     Instant now = Instant.now();
     
-    Recipe recipe = Recipe.builder()
+    com.recipe.shared.model.Recipe sharedRecipe = com.recipe.shared.model.Recipe.builder()
         .id(recipeId)
         .userId(userId)
-        .title(request.getTitle())
+        .recipeName(request.getRecipeName())
         .description(request.getDescription())
         .ingredients(request.getIngredients())
         .instructions(request.getInstructions())
-        .prepTime(request.getPrepTime())
-        .cookTime(request.getCookTime())
+        .prepTimeMinutes(request.getPrepTimeMinutes())
+        .cookTimeMinutes(request.getCookTimeMinutes())
         .servings(request.getServings())
-        .nutrition(request.getNutrition())
+        .nutritionalInfo(request.getNutritionalInfo())
         .tips(request.getTips())
         .imageUrl(request.getImageUrl())
         .source(request.getSource())
@@ -112,6 +111,8 @@ public class RecipeService {
         .createdAt(now)
         .updatedAt(now)
         .build();
+    
+    Recipe recipe = Recipe.fromShared(sharedRecipe);
     
     log.info("Mock recipe created with ID: {}", recipeId);
     return mapToResponse(recipe);
@@ -241,23 +242,28 @@ public class RecipeService {
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
       }
 
-      // Update fields
-      Recipe updatedRecipe = existingRecipe.toBuilder()
-          .title(request.getTitle())
+      // Update fields - create new recipe from shared model builder
+      com.recipe.shared.model.Recipe sharedRecipe = com.recipe.shared.model.Recipe.builder()
+          .id(existingRecipe.getId())
+          .userId(existingRecipe.getUserId())
+          .recipeName(request.getRecipeName())
           .description(request.getDescription())
           .ingredients(request.getIngredients())
           .instructions(request.getInstructions())
-          .prepTime(request.getPrepTime())
-          .cookTime(request.getCookTime())
+          .prepTimeMinutes(request.getPrepTimeMinutes())
+          .cookTimeMinutes(request.getCookTimeMinutes())
           .servings(request.getServings())
-          .nutrition(request.getNutrition())
+          .nutritionalInfo(request.getNutritionalInfo())
           .tips(request.getTips())
           .imageUrl(request.getImageUrl())
           .source(request.getSource())
           .tags(request.getTags())
           .dietaryRestrictions(request.getDietaryRestrictions())
+          .createdAt(existingRecipe.getCreatedAt())
           .updatedAt(Instant.now())
           .build();
+      
+      Recipe updatedRecipe = Recipe.fromShared(sharedRecipe);
 
       ApiFuture<WriteResult> writeFuture = docRef.set(updatedRecipe);
       WriteResult result = writeFuture.get();
@@ -318,21 +324,19 @@ public class RecipeService {
     }
   }
 
-  /**
-   * Map Recipe entity to RecipeResponse DTO.
-   */
   private RecipeResponse mapToResponse(Recipe recipe) {
     return RecipeResponse.builder()
         .id(recipe.getId())
         .userId(recipe.getUserId())
-        .title(recipe.getTitle())
+        .recipeName(recipe.getRecipeName())
         .description(recipe.getDescription())
         .ingredients(recipe.getIngredients())
         .instructions(recipe.getInstructions())
-        .prepTime(recipe.getPrepTime())
-        .cookTime(recipe.getCookTime())
+        .prepTimeMinutes(recipe.getPrepTimeMinutes())
+        .cookTimeMinutes(recipe.getCookTimeMinutes())
+        .totalTimeMinutes(recipe.getTotalTimeMinutes())
         .servings(recipe.getServings())
-        .nutrition(recipe.getNutrition())
+        .nutritionalInfo(recipe.getNutritionalInfo())
         .tips(recipe.getTips())
         .imageUrl(recipe.getImageUrl())
         .source(recipe.getSource())

@@ -64,7 +64,7 @@ class RecipeServiceTest {
 
         // Assert
         assertNotNull(response);
-        assertEquals(request.getTitle(), response.getTitle());
+        assertEquals(request.getRecipeName(), response.getRecipeName());
         assertEquals(userId, response.getUserId());
         assertEquals(request.getSource(), response.getSource());
         verify(firestore).collection("recipes");
@@ -85,7 +85,7 @@ class RecipeServiceTest {
         // Assert
         assertNotNull(response);
         assertNotNull(response.getId());
-        assertEquals(request.getTitle(), response.getTitle());
+        assertEquals(request.getRecipeName(), response.getRecipeName());
         assertEquals(userId, response.getUserId());
         // Source comes from request, not hardcoded to "test-mode"
         assertEquals(request.getSource(), response.getSource());
@@ -107,7 +107,7 @@ class RecipeServiceTest {
         RecipeResponse response = recipeService.saveRecipe(request, userId);
 
         // Assert
-        assertNotNull(response.getTitle());
+        assertNotNull(response.getRecipeName());
         assertNotNull(response.getIngredients());
         assertNotNull(response.getInstructions());
         assertNotNull(response.getServings());
@@ -119,7 +119,7 @@ class RecipeServiceTest {
         String recipeId = "recipe123";
         String userId = "user123";
         CreateRecipeRequest request = createValidRequest();
-        request.setTitle("Updated Title");
+        request.setRecipeName("Updated Title");
 
         com.google.cloud.firestore.CollectionReference collectionRef = mock(com.google.cloud.firestore.CollectionReference.class);
         when(firestore.collection(anyString())).thenReturn(collectionRef);
@@ -131,11 +131,12 @@ class RecipeServiceTest {
         when(futureSnapshot.get()).thenReturn(documentSnapshot);
         when(documentSnapshot.exists()).thenReturn(true);
 
-        Recipe existingRecipe = Recipe.builder()
+        com.recipe.shared.model.Recipe sharedRecipe = com.recipe.shared.model.Recipe.builder()
             .id(recipeId)
             .userId(userId)
-            .title("Old Title")
+            .recipeName("Old Title")
             .build();
+        Recipe existingRecipe = Recipe.fromShared(sharedRecipe);
         when(documentSnapshot.toObject(Recipe.class)).thenReturn(existingRecipe);
 
         when(documentReference.set(any(Recipe.class))).thenReturn(writeResultFuture);
@@ -146,7 +147,7 @@ class RecipeServiceTest {
 
         // Assert
         assertNotNull(response);
-        assertEquals("Updated Title", response.getTitle());
+        assertEquals("Updated Title", response.getRecipeName());
         verify(documentReference).set(any(Recipe.class));
     }
 
@@ -190,11 +191,12 @@ class RecipeServiceTest {
         when(futureSnapshot.get()).thenReturn(documentSnapshot);
         when(documentSnapshot.exists()).thenReturn(true);
 
-        Recipe existingRecipe = Recipe.builder()
+        com.recipe.shared.model.Recipe sharedRecipe = com.recipe.shared.model.Recipe.builder()
             .id(recipeId)
             .userId(differentUserId)
-            .title("Some Recipe")
+            .recipeName("Some Recipe")
             .build();
+        Recipe existingRecipe = Recipe.fromShared(sharedRecipe);
         when(documentSnapshot.toObject(Recipe.class)).thenReturn(existingRecipe);
 
         // Act & Assert
@@ -227,12 +229,12 @@ class RecipeServiceTest {
 
     private CreateRecipeRequest createValidRequest() {
         return CreateRecipeRequest.builder()
-            .title("Delicious Pasta")
+            .recipeName("Delicious Pasta")
             .description("A wonderful Italian pasta dish")
             .ingredients(List.of("200g pasta", "2 tomatoes", "1 onion"))
             .instructions(List.of("Boil water", "Cook pasta", "Mix ingredients"))
-            .prepTime(15)
-            .cookTime(20)
+            .prepTimeMinutes(15)
+            .cookTimeMinutes(20)
             .servings(4)
             .source("ai-generated")
             .build();
