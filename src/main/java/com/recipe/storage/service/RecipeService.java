@@ -204,6 +204,74 @@ public class RecipeService {
   }
 
   /**
+   * Update an existing recipe.
+   *
+   * @param recipeId The recipe ID
+   * @param request The recipe update request
+   * @param userId The Firebase user ID (for authorization)
+   * @return The updated recipe
+   * @throws ResponseStatusException if recipe not found or user doesn't have access
+   */
+  public RecipeResponse updateRecipe(String recipeId, CreateRecipeRequest request, String userId) {
+    if (firestore == null) {
+      log.warn("Firestore not configured - running in test mode");
+      return createMockResponse(request, userId);
+    }
+
+    try {
+      DocumentReference docRef = firestore.collection(recipesCollection).document(recipeId);
+      ApiFuture<DocumentSnapshot> future = docRef.get();
+      DocumentSnapshot document = future.get();
+
+      if (!document.exists()) {
+        log.warn("Recipe not found for update: {}", recipeId);
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
+      }
+
+      Recipe existingRecipe = document.toObject(Recipe.class);
+      if (existingRecipe == null) {
+        log.error("Failed to deserialize recipe for update: {}", recipeId);
+        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+            "Failed to load recipe");
+      }
+
+      // Verify user owns this recipe
+      if (!userId.equals(existingRecipe.getUserId())) {
+        log.warn("User {} attempted to update recipe {} owned by {}",
+            userId, recipeId, existingRecipe.getUserId());
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+      }
+
+      // Update fields
+      Recipe updatedRecipe = existingRecipe.toBuilder()
+          .title(request.getTitle())
+          .description(request.getDescription())
+          .ingredients(request.getIngredients())
+          .instructions(request.getInstructions())
+          .prepTime(request.getPrepTime())
+          .cookTime(request.getCookTime())
+          .servings(request.getServings())
+          .nutrition(request.getNutrition())
+          .tips(request.getTips())
+          .imageUrl(request.getImageUrl())
+          .source(request.getSource())
+          .tags(request.getTags())
+          .dietaryRestrictions(request.getDietaryRestrictions())
+          .updatedAt(Instant.now())
+          .build();
+
+      ApiFuture<WriteResult> writeFuture = docRef.set(updatedRecipe);
+      WriteResult result = writeFuture.get();
+
+      log.info("Updated recipe {} for user {} at {}", recipeId, userId, result.getUpdateTime());
+      return mapToResponse(updatedRecipe);
+    } catch (InterruptedException | ExecutionException e) {
+      log.error("Error updating recipe in Firestore", e);
+      throw new RuntimeException("Failed to update recipe", e);
+    }
+  }
+
+  /**
    * Delete a recipe by ID.
    *
    * @param recipeId The recipe ID
