@@ -242,23 +242,28 @@ public class RecipeService {
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
       }
 
-      // Update fields
-      Recipe updatedRecipe = existingRecipe.toBuilder()
-          .title(request.getTitle())
+      // Update fields - create new recipe from shared model builder
+      com.recipe.shared.model.Recipe sharedRecipe = com.recipe.shared.model.Recipe.builder()
+          .id(existingRecipe.getId())
+          .userId(existingRecipe.getUserId())
+          .recipeName(request.getRecipeName())
           .description(request.getDescription())
           .ingredients(request.getIngredients())
           .instructions(request.getInstructions())
-          .prepTime(request.getPrepTime())
-          .cookTime(request.getCookTime())
+          .prepTimeMinutes(request.getPrepTimeMinutes())
+          .cookTimeMinutes(request.getCookTimeMinutes())
           .servings(request.getServings())
-          .nutrition(request.getNutrition())
+          .nutritionalInfo(request.getNutritionalInfo())
           .tips(request.getTips())
           .imageUrl(request.getImageUrl())
           .source(request.getSource())
           .tags(request.getTags())
           .dietaryRestrictions(request.getDietaryRestrictions())
+          .createdAt(existingRecipe.getCreatedAt())
           .updatedAt(Instant.now())
           .build();
+      
+      Recipe updatedRecipe = Recipe.fromShared(sharedRecipe);
 
       ApiFuture<WriteResult> writeFuture = docRef.set(updatedRecipe);
       WriteResult result = writeFuture.get();

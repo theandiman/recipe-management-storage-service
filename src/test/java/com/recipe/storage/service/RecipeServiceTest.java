@@ -131,11 +131,12 @@ class RecipeServiceTest {
         when(futureSnapshot.get()).thenReturn(documentSnapshot);
         when(documentSnapshot.exists()).thenReturn(true);
 
-        Recipe existingRecipe = Recipe.builder()
+        com.recipe.shared.model.Recipe sharedRecipe = com.recipe.shared.model.Recipe.builder()
             .id(recipeId)
             .userId(userId)
-            .title("Old Title")
+            .recipeName("Old Title")
             .build();
+        Recipe existingRecipe = Recipe.fromShared(sharedRecipe);
         when(documentSnapshot.toObject(Recipe.class)).thenReturn(existingRecipe);
 
         when(documentReference.set(any(Recipe.class))).thenReturn(writeResultFuture);
@@ -146,7 +147,7 @@ class RecipeServiceTest {
 
         // Assert
         assertNotNull(response);
-        assertEquals("Updated Title", response.getTitle());
+        assertEquals("Updated Title", response.getRecipeName());
         verify(documentReference).set(any(Recipe.class));
     }
 
@@ -190,11 +191,12 @@ class RecipeServiceTest {
         when(futureSnapshot.get()).thenReturn(documentSnapshot);
         when(documentSnapshot.exists()).thenReturn(true);
 
-        Recipe existingRecipe = Recipe.builder()
+        com.recipe.shared.model.Recipe sharedRecipe = com.recipe.shared.model.Recipe.builder()
             .id(recipeId)
             .userId(differentUserId)
-            .title("Some Recipe")
+            .recipeName("Some Recipe")
             .build();
+        Recipe existingRecipe = Recipe.fromShared(sharedRecipe);
         when(documentSnapshot.toObject(Recipe.class)).thenReturn(existingRecipe);
 
         // Act & Assert
