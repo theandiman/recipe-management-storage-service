@@ -119,7 +119,7 @@ class RecipeServiceTest {
         String recipeId = "recipe123";
         String userId = "user123";
         CreateRecipeRequest request = createValidRequest();
-        request.setTitle("Updated Title");
+        request.setRecipeName("Updated Title");
 
         com.google.cloud.firestore.CollectionReference collectionRef = mock(com.google.cloud.firestore.CollectionReference.class);
         when(firestore.collection(anyString())).thenReturn(collectionRef);
