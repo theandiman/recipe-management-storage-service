@@ -138,7 +138,6 @@ jobs:
         echo "Preparing next development version..."
 
         # Bump to next SNAPSHOT version for continued development
-        chmod +x version.sh
         ./version.sh bump-patch
         ./version.sh add-snapshot
 
