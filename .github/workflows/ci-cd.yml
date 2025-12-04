@@ -9,7 +9,7 @@ on:
 # Prevent concurrent builds on main branch only
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref == 'refs/heads/main' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   GCP_REGISTRY: europe-west2-docker.pkg.dev
@@ -110,13 +110,11 @@ jobs:
         docker build \
           -t $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-storage/$SERVICE_NAME:$GITHUB_SHA \
           -t $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-storage/$SERVICE_NAME:$VERSION \
-          -t $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-storage/$SERVICE_NAME:latest \
           .
 
         # Push to GCP Artifact Registry
         docker push $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-storage/$SERVICE_NAME:$GITHUB_SHA
         docker push $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-storage/$SERVICE_NAME:$VERSION
-        docker push $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-storage/$SERVICE_NAME:latest
 
     - name: Deploy to Cloud Run
       if: github.ref == 'refs/heads/main'
@@ -137,8 +135,7 @@ jobs:
 
         echo "Preparing next development version..."
 
-        # Bump to next SNAPSHOT version for continued development
-        ./version.sh bump-patch
+        # Add SNAPSHOT suffix for continued development
         ./version.sh add-snapshot
 
         NEXT_VERSION=$(./version.sh current | sed 's/Current version: //')
@@ -152,7 +149,7 @@ jobs:
         git add pom.xml
         git commit -m "Bump version to $NEXT_VERSION for next development cycle"
 
-        # Force push the version change (allowed by branch protection settings)
-        git push --force origin main
+        # Push the version change
+        git push origin main
 
         echo "Version $NEXT_VERSION committed to main ✓"
