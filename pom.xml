@@ -30,11 +30,13 @@
             <id>central</id>
             <url>https://repo1.maven.org/maven2</url>
         </repository>
+
         <repository>
             <id>github</id>
             <name>GitHub Packages</name>
             <url>https://maven.pkg.github.com/theandiman/recipe-management-shared</url>
         </repository>
+
     </repositories>
 
     <dependencies>
@@ -62,8 +64,10 @@
         <dependency>
             <groupId>com.recipe</groupId>
             <artifactId>recipe-management-shared</artifactId>
-            <version>1.0.15</version>
+            <version>1.0.16</version>
         </dependency>
+
+
 
         <!-- Validation -->
         <dependency>
@@ -130,6 +134,7 @@
                 <version>3.5.0</version>
                 <configuration>
                     <configLocation>google_checks.xml</configLocation>
+                    <suppressionsLocation>ci/checkstyle-suppressions.xml</suppressionsLocation>
                     <consoleOutput>true</consoleOutput>
                     <failsOnError>false</failsOnError>
                     <violationSeverity>warning</violationSeverity>

@@ -28,8 +28,7 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
       "http://localhost:5173",
       "http://localhost:5174",
       "https://recipe-mgmt-dev.web.app",
-      "https://recipe-mgmt-dev.firebaseapp.com"
-  );
+      "https://recipe-mgmt-dev.firebaseapp.com");
 
   @Value("${auth.enabled}")
   private boolean authEnabled;
@@ -61,6 +60,12 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
       return;
     }
 
+    // Skip auth for public recipes
+    if (request.getRequestURI().contains("/api/recipes/public")) {
+      filterChain.doFilter(request, response);
+      return;
+    }
+
     if (!authEnabled) {
       log.warn("Authentication is disabled - using test user");
       request.setAttribute("userId", "test-user");
@@ -69,30 +74,30 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
     }
 
     String authHeader = request.getHeader("Authorization");
-    
+
     if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
       log.error("Missing or invalid Authorization header");
-      response.sendError(HttpServletResponse.SC_UNAUTHORIZED, 
+      response.sendError(HttpServletResponse.SC_UNAUTHORIZED,
           "Missing or invalid Authorization header");
       return;
     }
 
     String idToken = authHeader.substring(BEARER_PREFIX.length());
-    
+
     try {
       FirebaseToken decodedToken = FirebaseAuth.getInstance().verifyIdToken(idToken);
       String uid = decodedToken.getUid();
       String email = decodedToken.getEmail();
 
       log.info("Authenticated user: uid={}, email={}", uid, email);
-      
+
       // Set userId as request attribute for controller access
       request.setAttribute("userId", uid);
-      
+
       filterChain.doFilter(request, response);
     } catch (FirebaseAuthException e) {
       log.error("Failed to verify Firebase token: {}", e.getMessage());
-      response.sendError(HttpServletResponse.SC_UNAUTHORIZED, 
+      response.sendError(HttpServletResponse.SC_UNAUTHORIZED,
           "Invalid Firebase ID token");
     }
   }
