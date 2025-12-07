@@ -27,13 +27,29 @@ jobs:
           cache: 'maven'
 
       - name: Build and Generate OpenAPI Spec
-        # verify phase triggers the springdoc-openapi-maven-plugin
+        # verify phase triggers the OpenApiGeneratorTest
         run: mvn verify
 
+      - name: Setup Swagger UI
+        run: |
+          # Create directory for deployment
+          mkdir -p public
+          
+          # Download Swagger UI (v5.10.3)
+          curl -L https://github.com/swagger-api/swagger-ui/archive/refs/tags/v5.10.3.tar.gz -o swagger-ui.tar.gz
+          tar -xzf swagger-ui.tar.gz
+          
+          # Copy dist files to public directory
+          cp -r swagger-ui-5.10.3/dist/* public/
+          
+          # Copy generated OpenAPI spec
+          cp target/openapi.json public/openapi.json
+          
+          # Configure Swagger UI to use our spec
+          sed -i 's|url: "https://petstore.swagger.io/v2/swagger.json"|url: "openapi.json"|g' public/swagger-initializer.js
+
       - name: Deploy to GitHub Pages
-        uses: peter-evans/swagger-github-pages@v1
+        uses: peaceiris/actions-gh-pages@v3
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          target-branch: gh-pages
-          branch: main
-          spec-file: target/openapi.json
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
