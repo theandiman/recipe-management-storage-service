@@ -102,6 +102,85 @@ public class RecipeService {
   }
 
   /**
+   * Update an existing recipe.
+   *
+   * @param recipeId The ID of the recipe to update
+   * @param request  The update request
+   * @param userId   The ID of the user attempting the update
+   * @return The updated recipe response
+   */
+  public RecipeResponse updateRecipe(String recipeId, CreateRecipeRequest request, String userId) {
+    if (firestore == null) {
+      return createMockResponse(request, userId);
+    }
+
+    try {
+      DocumentReference docRef = firestore.collection(recipesCollection).document(recipeId);
+      ApiFuture<DocumentSnapshot> future = docRef.get();
+      DocumentSnapshot document = future.get();
+
+      if (!document.exists()) {
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
+      }
+
+      Recipe existingRecipe = document.toObject(Recipe.class);
+      if (existingRecipe == null) {
+        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+            "Failed to load existing recipe");
+      }
+
+      // Verify ownership
+      if (!userId.equals(existingRecipe.getUserId())) {
+        log.warn("User {} attempted to update recipe {} owned by {}",
+            userId, recipeId, existingRecipe.getUserId());
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+      }
+
+      Instant now = Instant.now();
+
+      NutritionalInfo nutritionalInfo = null;
+      if (request.getNutrition() != null) {
+        nutritionalInfo = NutritionalInfo.builder()
+            .perServing(com.recipe.shared.model.NutritionValues.fromMap(request.getNutrition()))
+            .build();
+      }
+
+      com.recipe.shared.model.RecipeTips recipeTips = null;
+      if (request.getTips() != null) {
+        recipeTips = com.recipe.shared.model.RecipeTips.fromMap(request.getTips());
+      }
+
+      // Update fields
+      Recipe updatedRecipe = existingRecipe.toBuilder()
+          .recipeName(request.getTitle())
+          .description(request.getDescription())
+          .ingredients(request.getIngredients())
+          .instructions(request.getInstructions())
+          .prepTimeMinutes(request.getPrepTime())
+          .cookTimeMinutes(request.getCookTime())
+          .servings(request.getServings())
+          .nutritionalInfo(nutritionalInfo)
+          .tips(recipeTips)
+          .imageUrl(request.getImageUrl())
+          .source(request.getSource())
+          .tags(request.getTags())
+          .dietaryRestrictions(request.getDietaryRestrictions())
+          .isPublic(request.isPublic())
+          .updatedAt(now)
+          .build();
+
+      ApiFuture<WriteResult> writeFuture = docRef.set(updatedRecipe);
+      writeFuture.get();
+
+      log.info("Recipe updated with ID: {} by user {}", recipeId, userId);
+      return mapToResponse(updatedRecipe);
+    } catch (InterruptedException | ExecutionException e) {
+      log.error("Error updating recipe in Firestore", e);
+      throw new RuntimeException("Failed to update recipe", e);
+    }
+  }
+
+  /**
    * Create mock response for testing without Firestore.
    */
   private RecipeResponse createMockResponse(CreateRecipeRequest request, String userId) {

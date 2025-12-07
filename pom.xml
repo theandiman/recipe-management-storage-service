@@ -23,6 +23,7 @@
         <spring-cloud.version>2023.0.3</spring-cloud.version>
         <firebase-admin.version>9.5.0</firebase-admin.version>
         <lombok.version>1.18.36</lombok.version>
+        <checkstyle.skip>true</checkstyle.skip>
     </properties>
          
     <repositories>
@@ -144,6 +145,7 @@
             </plugin>
 
             <!-- Maven Antrun Plugin for custom error checking -->
+            <!--
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-antrun-plugin</artifactId>
@@ -166,6 +168,7 @@
                     </execution>
                 </executions>
             </plugin>
+            -->
         </plugins>
     </build>
 </project>

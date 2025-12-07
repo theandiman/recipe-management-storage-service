@@ -20,44 +20,44 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @TestPropertySource(properties = {
-        "auth.enabled=false",
-        "firestore.collection.recipes=test-recipes"
+                "auth.enabled=false",
+                "firestore.collection.recipes=test-recipes"
 })
 class RecipeSharingIntegrationTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+        @Autowired
+        private MockMvc mockMvc;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+        @Autowired
+        private ObjectMapper objectMapper;
 
-    @Test
-    void createPublicRecipe_Success() throws Exception {
-        CreateRecipeRequest request = CreateRecipeRequest.builder()
-                .title("Public Recipe")
-                .description("A public recipe")
-                .ingredients(List.of("Ingredient 1"))
-                .instructions(List.of("Step 1"))
-                .servings(2)
-                .prepTime(10)
-                .cookTime(10)
-                .source("manual")
-                .isPublic(true)
-                .build();
+        @Test
+        void createPublicRecipe_Success() throws Exception {
+                CreateRecipeRequest request = CreateRecipeRequest.builder()
+                                .title("Public Recipe")
+                                .description("A public recipe")
+                                .ingredients(List.of("Ingredient 1"))
+                                .instructions(List.of("Step 1"))
+                                .servings(2)
+                                .prepTime(10)
+                                .cookTime(10)
+                                .source("manual")
+                                .isPublic(true)
+                                .build();
 
-        mockMvc.perform(post("/api/recipes")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-                .header("X-User-ID", "user123"))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.public").value(true));
-    }
+                mockMvc.perform(post("/api/recipes")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                                .header("X-User-ID", "user123"))
+                                .andExpect(status().isCreated())
+                                .andExpect(jsonPath("$.isPublic").value(true));
+        }
 
-    @Test
-    void getPublicRecipes_ReturnsOk() throws Exception {
-        mockMvc.perform(get("/api/recipes/public"))
-                .andExpect(status().isOk());
-        // Expect empty list because Firestore is not mocked
-        // .andExpect(jsonPath("$").isArray());
-    }
+        @Test
+        void getPublicRecipes_ReturnsOk() throws Exception {
+                mockMvc.perform(get("/api/recipes/public"))
+                                .andExpect(status().isOk());
+                // Expect empty list because Firestore is not mocked
+                // .andExpect(jsonPath("$").isArray());
+        }
 }

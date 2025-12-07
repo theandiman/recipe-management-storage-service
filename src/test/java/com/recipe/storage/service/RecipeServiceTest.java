@@ -7,7 +7,7 @@ import com.google.cloud.firestore.Firestore;
 import com.google.cloud.firestore.WriteResult;
 import com.recipe.storage.dto.CreateRecipeRequest;
 import com.recipe.storage.dto.RecipeResponse;
-import com.recipe.storage.model.Recipe;
+import com.recipe.shared.model.Recipe;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -52,8 +52,9 @@ class RecipeServiceTest {
         // Arrange
         CreateRecipeRequest request = createValidRequest();
         String userId = "user123";
-        
-        com.google.cloud.firestore.CollectionReference collectionRef = mock(com.google.cloud.firestore.CollectionReference.class);
+
+        com.google.cloud.firestore.CollectionReference collectionRef = mock(
+                com.google.cloud.firestore.CollectionReference.class);
         when(firestore.collection(anyString())).thenReturn(collectionRef);
         when(collectionRef.document(anyString())).thenReturn(documentReference);
         when(documentReference.set(any(Recipe.class))).thenReturn(writeResultFuture);
@@ -64,7 +65,7 @@ class RecipeServiceTest {
 
         // Assert
         assertNotNull(response);
-        assertEquals(request.getRecipeName(), response.getRecipeName());
+        assertEquals(request.getTitle(), response.getTitle());
         assertEquals(userId, response.getUserId());
         assertEquals(request.getSource(), response.getSource());
         verify(firestore).collection("recipes");
@@ -85,7 +86,7 @@ class RecipeServiceTest {
         // Assert
         assertNotNull(response);
         assertNotNull(response.getId());
-        assertEquals(request.getRecipeName(), response.getRecipeName());
+        assertEquals(request.getTitle(), response.getTitle());
         assertEquals(userId, response.getUserId());
         // Source comes from request, not hardcoded to "test-mode"
         assertEquals(request.getSource(), response.getSource());
@@ -97,7 +98,8 @@ class RecipeServiceTest {
         CreateRecipeRequest request = createValidRequest();
         String userId = "user123";
 
-        com.google.cloud.firestore.CollectionReference collectionRef = mock(com.google.cloud.firestore.CollectionReference.class);
+        com.google.cloud.firestore.CollectionReference collectionRef = mock(
+                com.google.cloud.firestore.CollectionReference.class);
         when(firestore.collection(anyString())).thenReturn(collectionRef);
         when(collectionRef.document(anyString())).thenReturn(documentReference);
         when(documentReference.set(any(Recipe.class))).thenReturn(writeResultFuture);
@@ -107,7 +109,7 @@ class RecipeServiceTest {
         RecipeResponse response = recipeService.saveRecipe(request, userId);
 
         // Assert
-        assertNotNull(response.getRecipeName());
+        assertNotNull(response.getTitle());
         assertNotNull(response.getIngredients());
         assertNotNull(response.getInstructions());
         assertNotNull(response.getServings());
@@ -119,24 +121,26 @@ class RecipeServiceTest {
         String recipeId = "recipe123";
         String userId = "user123";
         CreateRecipeRequest request = createValidRequest();
-        request.setRecipeName("Updated Title");
+        request.setTitle("Updated Title");
 
-        com.google.cloud.firestore.CollectionReference collectionRef = mock(com.google.cloud.firestore.CollectionReference.class);
+        com.google.cloud.firestore.CollectionReference collectionRef = mock(
+                com.google.cloud.firestore.CollectionReference.class);
         when(firestore.collection(anyString())).thenReturn(collectionRef);
         when(collectionRef.document(recipeId)).thenReturn(documentReference);
 
         ApiFuture<com.google.cloud.firestore.DocumentSnapshot> futureSnapshot = mock(ApiFuture.class);
-        com.google.cloud.firestore.DocumentSnapshot documentSnapshot = mock(com.google.cloud.firestore.DocumentSnapshot.class);
+        com.google.cloud.firestore.DocumentSnapshot documentSnapshot = mock(
+                com.google.cloud.firestore.DocumentSnapshot.class);
         when(documentReference.get()).thenReturn(futureSnapshot);
         when(futureSnapshot.get()).thenReturn(documentSnapshot);
         when(documentSnapshot.exists()).thenReturn(true);
 
         com.recipe.shared.model.Recipe sharedRecipe = com.recipe.shared.model.Recipe.builder()
-            .id(recipeId)
-            .userId(userId)
-            .recipeName("Old Title")
-            .build();
-        Recipe existingRecipe = Recipe.fromShared(sharedRecipe);
+                .id(recipeId)
+                .userId(userId)
+                .recipeName("Old Title")
+                .build();
+        Recipe existingRecipe = sharedRecipe;
         when(documentSnapshot.toObject(Recipe.class)).thenReturn(existingRecipe);
 
         when(documentReference.set(any(Recipe.class))).thenReturn(writeResultFuture);
@@ -147,7 +151,7 @@ class RecipeServiceTest {
 
         // Assert
         assertNotNull(response);
-        assertEquals("Updated Title", response.getRecipeName());
+        assertEquals("Updated Title", response.getTitle());
         verify(documentReference).set(any(Recipe.class));
     }
 
@@ -158,19 +162,21 @@ class RecipeServiceTest {
         String userId = "user123";
         CreateRecipeRequest request = createValidRequest();
 
-        com.google.cloud.firestore.CollectionReference collectionRef = mock(com.google.cloud.firestore.CollectionReference.class);
+        com.google.cloud.firestore.CollectionReference collectionRef = mock(
+                com.google.cloud.firestore.CollectionReference.class);
         when(firestore.collection(anyString())).thenReturn(collectionRef);
         when(collectionRef.document(recipeId)).thenReturn(documentReference);
 
         ApiFuture<com.google.cloud.firestore.DocumentSnapshot> futureSnapshot = mock(ApiFuture.class);
-        com.google.cloud.firestore.DocumentSnapshot documentSnapshot = mock(com.google.cloud.firestore.DocumentSnapshot.class);
+        com.google.cloud.firestore.DocumentSnapshot documentSnapshot = mock(
+                com.google.cloud.firestore.DocumentSnapshot.class);
         when(documentReference.get()).thenReturn(futureSnapshot);
         when(futureSnapshot.get()).thenReturn(documentSnapshot);
         when(documentSnapshot.exists()).thenReturn(false);
 
         // Act & Assert
         assertThrows(org.springframework.web.server.ResponseStatusException.class,
-            () -> recipeService.updateRecipe(recipeId, request, userId));
+                () -> recipeService.updateRecipe(recipeId, request, userId));
     }
 
     @Test
@@ -181,42 +187,47 @@ class RecipeServiceTest {
         String differentUserId = "user456";
         CreateRecipeRequest request = createValidRequest();
 
-        com.google.cloud.firestore.CollectionReference collectionRef = mock(com.google.cloud.firestore.CollectionReference.class);
+        com.google.cloud.firestore.CollectionReference collectionRef = mock(
+                com.google.cloud.firestore.CollectionReference.class);
         when(firestore.collection(anyString())).thenReturn(collectionRef);
         when(collectionRef.document(recipeId)).thenReturn(documentReference);
 
         ApiFuture<com.google.cloud.firestore.DocumentSnapshot> futureSnapshot = mock(ApiFuture.class);
-        com.google.cloud.firestore.DocumentSnapshot documentSnapshot = mock(com.google.cloud.firestore.DocumentSnapshot.class);
+        com.google.cloud.firestore.DocumentSnapshot documentSnapshot = mock(
+                com.google.cloud.firestore.DocumentSnapshot.class);
         when(documentReference.get()).thenReturn(futureSnapshot);
         when(futureSnapshot.get()).thenReturn(documentSnapshot);
         when(documentSnapshot.exists()).thenReturn(true);
 
         com.recipe.shared.model.Recipe sharedRecipe = com.recipe.shared.model.Recipe.builder()
-            .id(recipeId)
-            .userId(differentUserId)
-            .recipeName("Some Recipe")
-            .build();
-        Recipe existingRecipe = Recipe.fromShared(sharedRecipe);
+                .id(recipeId)
+                .userId(differentUserId)
+                .recipeName("Some Recipe")
+                .build();
+        Recipe existingRecipe = sharedRecipe;
         when(documentSnapshot.toObject(Recipe.class)).thenReturn(existingRecipe);
 
         // Act & Assert
         assertThrows(org.springframework.web.server.ResponseStatusException.class,
-            () -> recipeService.updateRecipe(recipeId, request, userId));
+                () -> recipeService.updateRecipe(recipeId, request, userId));
     }
 
     @Test
-    void updateRecipe_DeserializationFailure_ThrowsInternalServerError() throws ExecutionException, InterruptedException {
+    void updateRecipe_DeserializationFailure_ThrowsInternalServerError()
+            throws ExecutionException, InterruptedException {
         // Arrange
         String recipeId = "recipe123";
         String userId = "user123";
         CreateRecipeRequest request = createValidRequest();
 
-        com.google.cloud.firestore.CollectionReference collectionRef = mock(com.google.cloud.firestore.CollectionReference.class);
+        com.google.cloud.firestore.CollectionReference collectionRef = mock(
+                com.google.cloud.firestore.CollectionReference.class);
         when(firestore.collection(anyString())).thenReturn(collectionRef);
         when(collectionRef.document(recipeId)).thenReturn(documentReference);
 
         ApiFuture<com.google.cloud.firestore.DocumentSnapshot> futureSnapshot = mock(ApiFuture.class);
-        com.google.cloud.firestore.DocumentSnapshot documentSnapshot = mock(com.google.cloud.firestore.DocumentSnapshot.class);
+        com.google.cloud.firestore.DocumentSnapshot documentSnapshot = mock(
+                com.google.cloud.firestore.DocumentSnapshot.class);
         when(documentReference.get()).thenReturn(futureSnapshot);
         when(futureSnapshot.get()).thenReturn(documentSnapshot);
         when(documentSnapshot.exists()).thenReturn(true);
@@ -224,19 +235,19 @@ class RecipeServiceTest {
 
         // Act & Assert
         assertThrows(org.springframework.web.server.ResponseStatusException.class,
-            () -> recipeService.updateRecipe(recipeId, request, userId));
+                () -> recipeService.updateRecipe(recipeId, request, userId));
     }
 
     private CreateRecipeRequest createValidRequest() {
         return CreateRecipeRequest.builder()
-            .recipeName("Delicious Pasta")
-            .description("A wonderful Italian pasta dish")
-            .ingredients(List.of("200g pasta", "2 tomatoes", "1 onion"))
-            .instructions(List.of("Boil water", "Cook pasta", "Mix ingredients"))
-            .prepTimeMinutes(15)
-            .cookTimeMinutes(20)
-            .servings(4)
-            .source("ai-generated")
-            .build();
+                .title("Delicious Pasta")
+                .description("A wonderful Italian pasta dish")
+                .ingredients(List.of("200g pasta", "2 tomatoes", "1 onion"))
+                .instructions(List.of("Boil water", "Cook pasta", "Mix ingredients"))
+                .prepTime(15)
+                .cookTime(20)
+                .servings(4)
+                .source("ai-generated")
+                .build();
     }
 }
