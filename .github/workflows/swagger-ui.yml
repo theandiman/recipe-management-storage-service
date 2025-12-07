@@ -5,7 +5,9 @@ on:
     branches:
       - main
     paths:
-      - 'recipe-management-storage-service/**'
+      - 'src/**'
+      - 'pom.xml'
+      - '.github/workflows/**'
 
 permissions:
   contents: write
@@ -13,10 +15,6 @@ permissions:
 jobs:
   deploy-swagger:
     runs-on: ubuntu-latest
-    
-    defaults:
-      run:
-        working-directory: recipe-management-storage-service
 
     steps:
       - uses: actions/checkout@v4
