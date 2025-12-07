@@ -1,57 +1,50 @@
 package com.recipe.storage.model;
 
-import org.springframework.beans.BeanUtils;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * Recipe entity representing a stored recipe.
- * This extends the shared Recipe model with storage-specific functionality.
  */
-public class Recipe extends com.recipe.shared.model.Recipe {
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class Recipe {
 
-  // Additional storage-specific methods can be added here if needed
+  private String id; // Firestore document ID
+  private String userId; // Firebase user ID who created/saved the recipe
+  private String title;
+  private String description;
+  private List<String> ingredients;
+  private List<String> instructions;
+  private Integer prepTime; // in minutes
+  private Integer cookTime; // in minutes
+  private Integer servings;
 
-  /**
-   * Creates a Recipe from the shared Recipe model.
-   */
-  public static Recipe fromShared(com.recipe.shared.model.Recipe sharedRecipe) {
-    if (sharedRecipe == null) {
-      return null;
-    }
+  // Nutrition information
+  private Map<String, Object> nutrition;
 
-    Recipe recipe = new Recipe();
-    // Copy all fields from shared recipe
-    BeanUtils.copyProperties(sharedRecipe, recipe);
+  // Tips from AI generation
+  private Map<String, List<String>> tips;
 
-    return recipe;
-  }
+  // Image URL if generated
+  private String imageUrl;
 
-  /**
-   * Converts to shared Recipe model.
-   */
-  public com.recipe.shared.model.Recipe toShared() {
-    return com.recipe.shared.model.Recipe.builder()
-        .id(getId())
-        .userId(getUserId())
-        .recipeName(getRecipeName())
-        .description(getDescription())
-        .ingredients(getIngredients())
-        .instructions(getInstructions())
-        .prepTimeMinutes(getPrepTimeMinutes())
-        .cookTimeMinutes(getCookTimeMinutes())
-        .totalTimeMinutes(getTotalTimeMinutes())
-        .prepTime(getPrepTime())
-        .cookTime(getCookTime())
-        .totalTime(getTotalTime())
-        .servings(getServings())
-        .nutritionalInfo(getNutritionalInfo())
-        .tips(getTips())
-        .imageUrl(getImageUrl())
-        .source(getSource())
-        .createdAt(getCreatedAt())
-        .updatedAt(getUpdatedAt())
-        .tags(getTags())
-        .dietaryRestrictions(getDietaryRestrictions())
-        .imageGeneration(getImageGeneration())
-        .build();
-  }
+  // Metadata
+  private String source; // e.g., "ai-generated", "manual"
+  private Instant createdAt;
+  private Instant updatedAt;
+
+  // Tags for categorization
+  private List<String> tags;
+  private List<String> dietaryRestrictions;
+
+  // Sharing
+  private boolean isPublic;
 }

@@ -30,11 +30,7 @@
             <id>central</id>
             <url>https://repo1.maven.org/maven2</url>
         </repository>
-        <repository>
-            <id>github</id>
-            <name>GitHub Packages</name>
-            <url>https://maven.pkg.github.com/theandiman/recipe-management-shared</url>
-        </repository>
+
     </repositories>
 
     <dependencies>
@@ -58,12 +54,7 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- Shared library -->
-        <dependency>
-            <groupId>com.recipe</groupId>
-            <artifactId>recipe-management-shared</artifactId>
-            <version>1.0.15</version>
-        </dependency>
+
 
         <!-- Validation -->
         <dependency>

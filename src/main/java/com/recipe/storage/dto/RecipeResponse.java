@@ -1,10 +1,9 @@
 package com.recipe.storage.dto;
 
-import com.recipe.shared.model.NutritionalInfo;
-import com.recipe.shared.model.RecipeTips;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -32,8 +31,8 @@ public class RecipeResponse {
   )
   private String userId;
 
-  @Schema(description = "Recipe name", example = "Spaghetti Carbonara")
-  private String recipeName;
+  @Schema(description = "Recipe title", example = "Spaghetti Carbonara")
+  private String title;
 
   @Schema(
       description = "Recipe description",
@@ -54,28 +53,26 @@ public class RecipeResponse {
   private List<String> instructions;
 
   @Schema(description = "Preparation time in minutes", example = "15")
-  private Integer prepTimeMinutes;
+  private Integer prepTime;
 
   @Schema(description = "Cooking time in minutes", example = "20")
-  private Integer cookTimeMinutes;
-
-  @Schema(description = "Total time in minutes", example = "35")
-  private Integer totalTimeMinutes;
+  private Integer cookTime;
 
   @Schema(description = "Number of servings", example = "4")
   private Integer servings;
 
   @Schema(
-      description = "Structured nutritional information",
-      example = "{\"perServing\": {\"calories\": 450, \"protein\": 20}}"
+      description = "Nutritional information per serving",
+      example = "{\"calories\": 450, \"protein\": 20, \"carbs\": 55, \"fat\": 18}"
   )
-  private NutritionalInfo nutritionalInfo;
+  private Map<String, Object> nutrition;
 
   @Schema(
-      description = "Recipe tips and additional information",
-      example = "{\"substitutions\": [\"Use turkey bacon instead of pancetta\"]}"
+      description = "Cooking tips organized by category",
+      example = "{\"prep\": [\"Use room temperature eggs\"], "
+          + "\"serving\": [\"Serve immediately\"]}"
   )
-  private RecipeTips tips;
+  private Map<String, List<String>> tips;
 
   @Schema(
       description = "URL to recipe image",
@@ -113,4 +110,10 @@ public class RecipeResponse {
       example = "[\"Gluten-Free\", \"Vegetarian\"]"
   )
   private List<String> dietaryRestrictions;
+
+  @Schema(
+      description = "Whether the recipe is shared with everyone",
+      example = "true"
+  )
+  private boolean isPublic;
 }
