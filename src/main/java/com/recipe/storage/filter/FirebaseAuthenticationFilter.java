@@ -66,6 +66,13 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
       return;
     }
 
+    // Skip auth for Swagger UI and API docs
+    if (request.getRequestURI().contains("/v3/api-docs")
+        || request.getRequestURI().contains("/swagger-ui")) {
+      filterChain.doFilter(request, response);
+      return;
+    }
+
     if (!authEnabled) {
       log.warn("Authentication is disabled - using test user");
       request.setAttribute("userId", "test-user");
