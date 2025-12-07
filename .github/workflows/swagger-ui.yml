@@ -25,10 +25,14 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
           cache: 'maven'
+          server-id: github # Matches <repository><id> in pom.xml
+          settings-path: ${{ github.workspace }}
 
       - name: Build and Generate OpenAPI Spec
         # verify phase triggers the OpenApiGeneratorTest
-        run: mvn verify
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn verify -s ${{ github.workspace }}/settings.xml
 
       - name: Setup Swagger UI
         run: |
