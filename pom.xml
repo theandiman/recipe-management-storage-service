@@ -14,7 +14,7 @@
 
     <groupId>com.recipe</groupId>
     <artifactId>recipe-storage-service</artifactId>
-    <version>0.0.2-SNAPSHOT</version>
+    <version>0.0.3-SNAPSHOT</version>
     <name>recipe-storage-service</name>
     <description>Recipe storage service using Spring Boot and Firestore</description>
 
@@ -108,13 +108,6 @@
                             <artifactId>lombok</artifactId>
                         </exclude>
                     </excludes>
-                    <!-- START springApplication with dummy credentials -->
-                    <environmentVariables>
-                        <GOOGLE_APPLICATION_CREDENTIALS>${project.basedir}/ci/dummy-google-credentials.json</GOOGLE_APPLICATION_CREDENTIALS>
-                        <springdoc.packagesToScan>com.recipe.storage</springdoc.packagesToScan>
-                        <springdoc.api-docs.path>/v3/api-docs</springdoc.api-docs.path>
-                        <logging.level.org.springdoc>DEBUG</logging.level.org.springdoc>
-                    </environmentVariables>
                 </configuration>
             </plugin>
 
@@ -157,26 +150,6 @@
                 </executions>
             </plugin>
 
-            <!-- SpringDoc OpenAPI Plugin -->
-            <plugin>
-                <groupId>org.springdoc</groupId>
-                <artifactId>springdoc-openapi-maven-plugin</artifactId>
-                <version>1.4</version>
-                <executions>
-                    <execution>
-                        <phase>integration-test</phase>
-                        <goals>
-                            <goal>generate</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <apiDocsUrl>http://localhost:8080/v3/api-docs</apiDocsUrl>
-                    <outputFileName>openapi.json</outputFileName>
-                    <outputDir>${project.build.directory}</outputDir>
-                </configuration>
-            </plugin>
-            
             <!-- Maven Antrun Plugin for custom error checking -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
