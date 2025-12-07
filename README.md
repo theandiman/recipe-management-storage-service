@@ -118,7 +118,7 @@ environment:
 
 ## API Endpoints
 
-📘 **[Is API Documentation](https://theandiman.github.io/recipe-management-storage-service/)** - View the interactive Swagger UI for full API details.
+📘 **[API Documentation](https://theandiman.github.io/recipe-management-storage-service/)** - View the interactive Swagger UI for full API details.
 
 ### Save Recipe
 ```http
