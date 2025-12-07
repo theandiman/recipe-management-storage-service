@@ -54,17 +54,8 @@ public class RecipeService {
       String recipeId = UUID.randomUUID().toString();
       Instant now = Instant.now();
 
-      NutritionalInfo nutritionalInfo = null;
-      if (request.getNutrition() != null) {
-        nutritionalInfo = NutritionalInfo.builder()
-            .perServing(com.recipe.shared.model.NutritionValues.fromMap(request.getNutrition()))
-            .build();
-      }
-
-      com.recipe.shared.model.RecipeTips recipeTips = null;
-      if (request.getTips() != null) {
-        recipeTips = com.recipe.shared.model.RecipeTips.fromMap(request.getTips());
-      }
+      NutritionalInfo nutritionalInfo = mapToNutritionalInfo(request.getNutrition());
+      com.recipe.shared.model.RecipeTips recipeTips = mapToRecipeTips(request.getTips());
 
       Recipe recipe = Recipe.builder()
           .id(recipeId)
@@ -138,17 +129,8 @@ public class RecipeService {
 
       Instant now = Instant.now();
 
-      NutritionalInfo nutritionalInfo = null;
-      if (request.getNutrition() != null) {
-        nutritionalInfo = NutritionalInfo.builder()
-            .perServing(com.recipe.shared.model.NutritionValues.fromMap(request.getNutrition()))
-            .build();
-      }
-
-      com.recipe.shared.model.RecipeTips recipeTips = null;
-      if (request.getTips() != null) {
-        recipeTips = com.recipe.shared.model.RecipeTips.fromMap(request.getTips());
-      }
+      NutritionalInfo nutritionalInfo = mapToNutritionalInfo(request.getNutrition());
+      com.recipe.shared.model.RecipeTips recipeTips = mapToRecipeTips(request.getTips());
 
       // Update fields
       Recipe updatedRecipe = existingRecipe.toBuilder()
@@ -187,17 +169,8 @@ public class RecipeService {
     String recipeId = UUID.randomUUID().toString();
     Instant now = Instant.now();
 
-    NutritionalInfo nutritionalInfo = null;
-    if (request.getNutrition() != null) {
-      nutritionalInfo = NutritionalInfo.builder()
-          .perServing(com.recipe.shared.model.NutritionValues.fromMap(request.getNutrition()))
-          .build();
-    }
-
-    com.recipe.shared.model.RecipeTips recipeTips = null;
-    if (request.getTips() != null) {
-      recipeTips = com.recipe.shared.model.RecipeTips.fromMap(request.getTips());
-    }
+    NutritionalInfo nutritionalInfo = mapToNutritionalInfo(request.getNutrition());
+    com.recipe.shared.model.RecipeTips recipeTips = mapToRecipeTips(request.getTips());
 
     Recipe recipe = Recipe.builder()
         .id(recipeId)
@@ -442,5 +415,27 @@ public class RecipeService {
         .dietaryRestrictions(recipe.getDietaryRestrictions())
         .isPublic(recipe.isPublic())
         .build();
+  }
+
+  /**
+   * Helper to map nutrition map to NutritionalInfo.
+   */
+  private NutritionalInfo mapToNutritionalInfo(Map<String, Object> nutritionMap) {
+    if (nutritionMap == null) {
+      return null;
+    }
+    return NutritionalInfo.builder()
+        .perServing(com.recipe.shared.model.NutritionValues.fromMap(nutritionMap))
+        .build();
+  }
+
+  /**
+   * Helper to map tips map to RecipeTips.
+   */
+  private com.recipe.shared.model.RecipeTips mapToRecipeTips(Map<String, List<String>> tipsMap) {
+    if (tipsMap == null) {
+      return null;
+    }
+    return com.recipe.shared.model.RecipeTips.fromMap(tipsMap);
   }
 }

@@ -54,21 +54,23 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
       return;
     }
 
+    String path = request.getRequestURI();
+
     // Skip auth for health check
-    if (request.getRequestURI().contains("/actuator/health")) {
+    if (path.startsWith("/actuator/health")) {
       filterChain.doFilter(request, response);
       return;
     }
 
     // Skip auth for public recipes
-    if (request.getRequestURI().contains("/api/recipes/public")) {
+    if (path.equals("/api/recipes/public")) {
       filterChain.doFilter(request, response);
       return;
     }
 
     // Skip auth for Swagger UI and API docs
-    if (request.getRequestURI().contains("/v3/api-docs")
-        || request.getRequestURI().contains("/swagger-ui")) {
+    if (path.startsWith("/v3/api-docs")
+        || path.startsWith("/swagger-ui")) {
       filterChain.doFilter(request, response);
       return;
     }
