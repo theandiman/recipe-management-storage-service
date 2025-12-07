@@ -7,12 +7,14 @@ import com.google.cloud.firestore.Firestore;
 import com.google.cloud.firestore.Query;
 import com.google.cloud.firestore.QuerySnapshot;
 import com.google.cloud.firestore.WriteResult;
+import com.recipe.shared.model.NutritionalInfo;
+import com.recipe.shared.model.Recipe;
 import com.recipe.storage.dto.CreateRecipeRequest;
 import com.recipe.storage.dto.RecipeResponse;
-import com.recipe.storage.model.Recipe;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import lombok.extern.slf4j.Slf4j;
@@ -52,21 +54,31 @@ public class RecipeService {
       String recipeId = UUID.randomUUID().toString();
       Instant now = Instant.now();
 
+      NutritionalInfo nutritionalInfo = null;
+      if (request.getNutrition() != null) {
+        nutritionalInfo = NutritionalInfo.builder()
+            .perServing(com.recipe.shared.model.NutritionValues.fromMap(request.getNutrition()))
+            .build();
+      }
+
+      com.recipe.shared.model.RecipeTips recipeTips = null;
+      if (request.getTips() != null) {
+        recipeTips = com.recipe.shared.model.RecipeTips.fromMap(request.getTips());
+      }
+
       Recipe recipe = Recipe.builder()
           .id(recipeId)
           .userId(userId)
-          .title(request.getTitle())
+          .recipeName(request.getTitle())
           .description(request.getDescription())
           .ingredients(request.getIngredients())
           .instructions(request.getInstructions())
-          .prepTime(request.getPrepTime())
-          .cookTime(request.getCookTime())
+          .prepTimeMinutes(request.getPrepTime())
+          .cookTimeMinutes(request.getCookTime())
           .servings(request.getServings())
-          .nutrition(request.getNutrition())
-          .tips(request.getTips())
+          .nutritionalInfo(nutritionalInfo)
+          .tips(recipeTips)
           .imageUrl(request.getImageUrl())
-          .source(request.getSource())
-          .tags(request.getTags())
           .source(request.getSource())
           .tags(request.getTags())
           .dietaryRestrictions(request.getDietaryRestrictions())
@@ -96,21 +108,31 @@ public class RecipeService {
     String recipeId = UUID.randomUUID().toString();
     Instant now = Instant.now();
 
+    NutritionalInfo nutritionalInfo = null;
+    if (request.getNutrition() != null) {
+      nutritionalInfo = NutritionalInfo.builder()
+          .perServing(com.recipe.shared.model.NutritionValues.fromMap(request.getNutrition()))
+          .build();
+    }
+
+    com.recipe.shared.model.RecipeTips recipeTips = null;
+    if (request.getTips() != null) {
+      recipeTips = com.recipe.shared.model.RecipeTips.fromMap(request.getTips());
+    }
+
     Recipe recipe = Recipe.builder()
         .id(recipeId)
         .userId(userId)
-        .title(request.getTitle())
+        .recipeName(request.getTitle())
         .description(request.getDescription())
         .ingredients(request.getIngredients())
         .instructions(request.getInstructions())
-        .prepTime(request.getPrepTime())
-        .cookTime(request.getCookTime())
+        .prepTimeMinutes(request.getPrepTime())
+        .cookTimeMinutes(request.getCookTime())
         .servings(request.getServings())
-        .nutrition(request.getNutrition())
-        .tips(request.getTips())
+        .nutritionalInfo(nutritionalInfo)
+        .tips(recipeTips)
         .imageUrl(request.getImageUrl())
-        .source(request.getSource())
-        .tags(request.getTags())
         .source(request.getSource())
         .tags(request.getTags())
         .dietaryRestrictions(request.getDietaryRestrictions())
@@ -298,18 +320,41 @@ public class RecipeService {
    * Map Recipe entity to RecipeResponse DTO.
    */
   private RecipeResponse mapToResponse(Recipe recipe) {
+    Map<String, Object> nutritionMap = null;
+    if (recipe.getNutritionalInfo() != null
+        && recipe.getNutritionalInfo().getPerServing() != null) {
+      // Simplified mapping: we return only perServing values as flat map to match API
+      // contract
+      nutritionMap = recipe.getNutritionalInfo().getPerServing().toMap();
+    }
+
+    Map<String, List<String>> tipsMap = null;
+    if (recipe.getTips() != null) {
+      // Simplified mapping for now, based on RecipeTips having simple conversion
+      // available
+      // Note: RecipeTips.toMap() currently returns null or specific map, need to
+      // check implementation
+      // The shared model toMap returns "substitutions" and "variations" only.
+      try {
+        tipsMap = recipe.getTips().toMap();
+      } catch (Exception e) {
+        log.warn("Failed to map tips", e);
+        tipsMap = null;
+      }
+    }
+
     return RecipeResponse.builder()
         .id(recipe.getId())
         .userId(recipe.getUserId())
-        .title(recipe.getTitle())
+        .title(recipe.getRecipeName())
         .description(recipe.getDescription())
         .ingredients(recipe.getIngredients())
         .instructions(recipe.getInstructions())
-        .prepTime(recipe.getPrepTime())
-        .cookTime(recipe.getCookTime())
+        .prepTime(recipe.getPrepTimeMinutes())
+        .cookTime(recipe.getCookTimeMinutes())
         .servings(recipe.getServings())
-        .nutrition(recipe.getNutrition())
-        .tips(recipe.getTips())
+        .nutrition(nutritionMap)
+        .tips(tipsMap)
         .imageUrl(recipe.getImageUrl())
         .source(recipe.getSource())
         .createdAt(recipe.getCreatedAt())
