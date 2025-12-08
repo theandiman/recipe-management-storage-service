@@ -238,6 +238,122 @@ class RecipeServiceTest {
                 () -> recipeService.updateRecipe(recipeId, request, userId));
     }
 
+    @Test
+    void updateRecipeSharing_Success() throws ExecutionException, InterruptedException {
+        // Arrange
+        String recipeId = "recipe123";
+        String userId = "user123";
+        boolean isPublic = true;
+
+        com.google.cloud.firestore.CollectionReference collectionRef = mock(
+                com.google.cloud.firestore.CollectionReference.class);
+        when(firestore.collection(anyString())).thenReturn(collectionRef);
+        when(collectionRef.document(recipeId)).thenReturn(documentReference);
+
+        ApiFuture<com.google.cloud.firestore.DocumentSnapshot> futureSnapshot = mock(ApiFuture.class);
+        com.google.cloud.firestore.DocumentSnapshot documentSnapshot = mock(
+                com.google.cloud.firestore.DocumentSnapshot.class);
+        when(documentReference.get()).thenReturn(futureSnapshot);
+        when(futureSnapshot.get()).thenReturn(documentSnapshot);
+        when(documentSnapshot.exists()).thenReturn(true);
+
+        Recipe existingRecipe = Recipe.builder()
+                .id(recipeId)
+                .userId(userId)
+                .recipeName("Test Recipe")
+                .isPublic(false)
+                .build();
+        when(documentSnapshot.toObject(Recipe.class)).thenReturn(existingRecipe);
+
+        when(documentReference.update(eq("isPublic"), eq(isPublic), eq("updatedAt"), any())).thenReturn(writeResultFuture);
+        when(writeResultFuture.get()).thenReturn(writeResult);
+
+        // Act
+        RecipeResponse response = recipeService.updateRecipeSharing(recipeId, isPublic, userId);
+
+        // Assert
+        assertNotNull(response);
+        assertTrue(response.isPublic());
+        verify(documentReference).update(eq("isPublic"), eq(isPublic), eq("updatedAt"), any());
+    }
+
+    @Test
+    void updateRecipeSharing_UserDoesNotOwnRecipe_ThrowsForbidden() throws ExecutionException, InterruptedException {
+        // Arrange
+        String recipeId = "recipe123";
+        String userId = "user123";
+        String differentUserId = "user456";
+        boolean isPublic = true;
+
+        com.google.cloud.firestore.CollectionReference collectionRef = mock(
+                com.google.cloud.firestore.CollectionReference.class);
+        when(firestore.collection(anyString())).thenReturn(collectionRef);
+        when(collectionRef.document(recipeId)).thenReturn(documentReference);
+
+        ApiFuture<com.google.cloud.firestore.DocumentSnapshot> futureSnapshot = mock(ApiFuture.class);
+        com.google.cloud.firestore.DocumentSnapshot documentSnapshot = mock(
+                com.google.cloud.firestore.DocumentSnapshot.class);
+        when(documentReference.get()).thenReturn(futureSnapshot);
+        when(futureSnapshot.get()).thenReturn(documentSnapshot);
+        when(documentSnapshot.exists()).thenReturn(true);
+
+        Recipe existingRecipe = Recipe.builder()
+                .id(recipeId)
+                .userId(differentUserId)
+                .recipeName("Test Recipe")
+                .isPublic(false)
+                .build();
+        when(documentSnapshot.toObject(Recipe.class)).thenReturn(existingRecipe);
+
+        // Act & Assert
+        org.springframework.web.server.ResponseStatusException exception = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> recipeService.updateRecipeSharing(recipeId, isPublic, userId));
+        assertEquals(org.springframework.http.HttpStatus.FORBIDDEN, exception.getStatusCode());
+    }
+
+    @Test
+    void updateRecipeSharing_RecipeNotFound_ThrowsNotFoundException() throws ExecutionException, InterruptedException {
+        // Arrange
+        String recipeId = "nonexistent123";
+        String userId = "user123";
+        boolean isPublic = true;
+
+        com.google.cloud.firestore.CollectionReference collectionRef = mock(
+                com.google.cloud.firestore.CollectionReference.class);
+        when(firestore.collection(anyString())).thenReturn(collectionRef);
+        when(collectionRef.document(recipeId)).thenReturn(documentReference);
+
+        ApiFuture<com.google.cloud.firestore.DocumentSnapshot> futureSnapshot = mock(ApiFuture.class);
+        com.google.cloud.firestore.DocumentSnapshot documentSnapshot = mock(
+                com.google.cloud.firestore.DocumentSnapshot.class);
+        when(documentReference.get()).thenReturn(futureSnapshot);
+        when(futureSnapshot.get()).thenReturn(documentSnapshot);
+        when(documentSnapshot.exists()).thenReturn(false);
+
+        // Act & Assert
+        org.springframework.web.server.ResponseStatusException exception = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> recipeService.updateRecipeSharing(recipeId, isPublic, userId));
+        assertEquals(org.springframework.http.HttpStatus.NOT_FOUND, exception.getStatusCode());
+    }
+
+    @Test
+    void updateRecipeSharing_FirestoreNotConfigured_ThrowsServiceUnavailable() {
+        // Arrange
+        RecipeService serviceWithoutFirestore = new RecipeService();
+        ReflectionTestUtils.setField(serviceWithoutFirestore, "recipesCollection", "recipes");
+        String recipeId = "recipe123";
+        String userId = "user123";
+        boolean isPublic = true;
+
+        // Act & Assert
+        org.springframework.web.server.ResponseStatusException exception = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> serviceWithoutFirestore.updateRecipeSharing(recipeId, isPublic, userId));
+        assertEquals(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE, exception.getStatusCode());
+    }
+
     private CreateRecipeRequest createValidRequest() {
         return CreateRecipeRequest.builder()
                 .title("Delicious Pasta")
