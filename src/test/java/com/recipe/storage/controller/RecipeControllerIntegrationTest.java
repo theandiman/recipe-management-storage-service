@@ -18,8 +18,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @TestPropertySource(properties = {
-    "auth.enabled=false",
-    "firestore.collection.recipes=test-recipes"
+        "auth.enabled=false",
+        "firestore.collection.recipes=test-recipes"
 })
 class RecipeControllerIntegrationTest {
 
@@ -32,58 +32,58 @@ class RecipeControllerIntegrationTest {
     @Test
     void createRecipe_Success() throws Exception {
         CreateRecipeRequest request = CreateRecipeRequest.builder()
-            .title("Delicious Pasta")
-            .description("A wonderful Italian pasta dish")
-            .ingredients(List.of("200g pasta", "2 tomatoes", "1 onion"))
-            .instructions(List.of("Boil water", "Cook pasta", "Mix ingredients"))
-            .prepTime(15)
-            .cookTime(20)
-            .servings(4)
-            .source("ai-generated")
-            .build();
+                .title("Delicious Pasta")
+                .description("A wonderful Italian pasta dish")
+                .ingredients(List.of("200g pasta", "2 tomatoes", "1 onion"))
+                .instructions(List.of("Boil water", "Cook pasta", "Mix ingredients"))
+                .prepTime(15)
+                .cookTime(20)
+                .servings(4)
+                .source("ai-generated")
+                .build();
 
         mockMvc.perform(post("/api/recipes")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
                 .header("X-User-ID", "user123"))
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.id").exists())
-            .andExpect(jsonPath("$.title").value("Delicious Pasta"))
-            .andExpect(jsonPath("$.servings").value(4));
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.title").value("Delicious Pasta"))
+                .andExpect(jsonPath("$.servings").value(4));
     }
 
     @Test
     void createRecipe_MissingTitle_ReturnsBadRequest() throws Exception {
         CreateRecipeRequest request = CreateRecipeRequest.builder()
-            .description("A wonderful Italian pasta dish")
-            .ingredients(List.of("200g pasta"))
-            .instructions(List.of("Cook"))
-            .servings(4)
-            .source("manual")
-            .build();
+                .description("A wonderful Italian pasta dish")
+                .ingredients(List.of("200g pasta"))
+                .instructions(List.of("Cook"))
+                .servings(4)
+                .source("manual")
+                .build();
 
         mockMvc.perform(post("/api/recipes")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
                 .header("X-User-ID", "test-user"))
-            .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest());
     }
 
     @Test
     void createRecipe_EmptyIngredients_ReturnsBadRequest() throws Exception {
         CreateRecipeRequest request = CreateRecipeRequest.builder()
-            .title("Test Recipe")
-            .ingredients(List.of())
-            .instructions(List.of("Cook"))
-            .servings(4)
-            .source("manual")
-            .build();
+                .title("Test Recipe")
+                .ingredients(List.of())
+                .instructions(List.of("Cook"))
+                .servings(4)
+                .source("manual")
+                .build();
 
         mockMvc.perform(post("/api/recipes")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
                 .header("X-User-ID", "test-user"))
-            .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest());
     }
 
     // Note: GET endpoint tests are skipped in integration tests
