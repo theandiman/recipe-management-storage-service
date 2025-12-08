@@ -200,7 +200,7 @@ public class RecipeController {
      * @param userId   The authenticated user's Firebase UID (injected by auth filter)
      * @return The updated recipe
      */
-    @org.springframework.web.bind.annotation.PatchMapping("/{recipeId}/sharing")
+    @PatchMapping("/{recipeId}/sharing")
     @Operation(summary = "Update recipe sharing status", description = "Updates whether a recipe is public or private. User must own the recipe. "
             + "Requires Firebase authentication token in Authorization header.")
     @ApiResponses(value = {
