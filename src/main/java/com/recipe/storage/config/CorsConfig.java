@@ -26,7 +26,7 @@ public class CorsConfig {
                 "https://recipe-mgmt-dev.web.app", // Firebase Hosting (dev)
                 "https://recipe-mgmt-dev.firebaseapp.com" // Firebase Hosting (dev alt)
             )
-            .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+            .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
             .allowedHeaders("*")
             .exposedHeaders("*")
             .allowCredentials(true)
