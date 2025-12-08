@@ -416,7 +416,8 @@ public class RecipeService {
       ApiFuture<WriteResult> writeFuture = docRef.update("isPublic", updatedRecipe.isPublic(), "updatedAt", updatedRecipe.getUpdatedAt());
       writeFuture.get();
 
-      log.info("Updated sharing status for recipe {} to {} by user {}", recipeId, isPublic, userId);
+      log.info("Updated sharing status for recipe {} to {} by user {}",
+          recipeId, isPublic, userId);
       return mapToResponse(updatedRecipe);
     } catch (InterruptedException | ExecutionException e) {
       log.error("Error updating recipe sharing in Firestore", e);
