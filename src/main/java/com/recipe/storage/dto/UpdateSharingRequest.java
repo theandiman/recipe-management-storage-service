@@ -18,8 +18,8 @@ import lombok.NoArgsConstructor;
 @Schema(description = "Request to update recipe sharing status")
 public class UpdateSharingRequest {
 
-    @NotNull(message = "isPublic field is required")
-    @Schema(description = "Whether the recipe should be public", required = true, example = "true")
-    @JsonProperty("isPublic")
-    private Boolean isPublic;
+  @NotNull(message = "isPublic field is required")
+  @Schema(description = "Whether the recipe should be public", required = true, example = "true")
+  @JsonProperty("isPublic")
+  private Boolean isPublic;
 }
