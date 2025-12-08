@@ -380,7 +380,7 @@ public class RecipeService {
   public RecipeResponse updateRecipeSharing(String recipeId, boolean isPublic, String userId) {
     if (firestore == null) {
       log.warn("Firestore not configured - cannot update sharing");
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
+      throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Database not configured");
     }
 
     try {
