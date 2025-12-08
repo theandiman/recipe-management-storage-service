@@ -265,7 +265,7 @@ class RecipeServiceTest {
                 .build();
         when(documentSnapshot.toObject(Recipe.class)).thenReturn(existingRecipe);
 
-        when(documentReference.update(eq("isPublic"), eq(true), eq("updatedAt"), any())).thenReturn(writeResultFuture);
+        when(documentReference.update(eq("isPublic"), eq(isPublic), eq("updatedAt"), any())).thenReturn(writeResultFuture);
         when(writeResultFuture.get()).thenReturn(writeResult);
 
         // Act
@@ -274,7 +274,7 @@ class RecipeServiceTest {
         // Assert
         assertNotNull(response);
         assertTrue(response.isPublic());
-        verify(documentReference).update(eq("isPublic"), eq(true), eq("updatedAt"), any());
+        verify(documentReference).update(eq("isPublic"), eq(isPublic), eq("updatedAt"), any());
     }
 
     @Test
