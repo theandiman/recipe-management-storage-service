@@ -211,11 +211,11 @@ public class RecipeController {
     })
     public ResponseEntity<RecipeResponse> updateRecipeSharing(
             @Parameter(description = "Recipe ID to update", required = true) @PathVariable String recipeId,
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "New sharing status", required = true) @RequestBody boolean isPublic,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "New sharing status", required = true) @Valid @RequestBody UpdateSharingRequest request,
             @Parameter(hidden = true) @RequestAttribute("userId") String userId) {
 
-        log.info("Updating sharing status for recipe {} to {} for user {}", recipeId, isPublic, userId);
-        RecipeResponse response = recipeService.updateRecipeSharing(recipeId, isPublic, userId);
+        log.info("Updating sharing status for recipe {} to {} for user {}", recipeId, request.getIsPublic(), userId);
+        RecipeResponse response = recipeService.updateRecipeSharing(recipeId, request.getIsPublic(), userId);
         return ResponseEntity.ok(response);
     }
 }
