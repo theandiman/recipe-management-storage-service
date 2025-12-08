@@ -265,7 +265,7 @@ class RecipeServiceTest {
                 .build();
         when(documentSnapshot.toObject(Recipe.class)).thenReturn(existingRecipe);
 
-        when(documentReference.update(anyString(), any(), anyString(), any())).thenReturn(writeResultFuture);
+        when(documentReference.update(eq("isPublic"), eq(true), eq("updatedAt"), any())).thenReturn(writeResultFuture);
         when(writeResultFuture.get()).thenReturn(writeResult);
 
         // Act
