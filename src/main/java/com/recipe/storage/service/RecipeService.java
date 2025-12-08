@@ -369,6 +369,62 @@ public class RecipeService {
   }
 
   /**
+   * Update the sharing status (isPublic) of a recipe.
+   *
+   * @param recipeId The recipe ID
+   * @param isPublic The new sharing status
+   * @param userId   The Firebase user ID (for authorization)
+   * @return The updated recipe
+   * @throws ResponseStatusException if recipe not found or user doesn't own it
+   */
+  public RecipeResponse updateRecipeSharing(String recipeId, boolean isPublic, String userId) {
+    if (firestore == null) {
+      log.warn("Firestore not configured - cannot update sharing");
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
+    }
+
+    try {
+      DocumentReference docRef = firestore.collection(recipesCollection).document(recipeId);
+      ApiFuture<DocumentSnapshot> future = docRef.get();
+      DocumentSnapshot document = future.get();
+
+      if (!document.exists()) {
+        log.warn("Recipe not found: {}", recipeId);
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
+      }
+
+      Recipe existingRecipe = document.toObject(Recipe.class);
+      if (existingRecipe == null) {
+        log.error("Failed to deserialize recipe: {}", recipeId);
+        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+            "Failed to load recipe");
+      }
+
+      // Verify ownership
+      if (!userId.equals(existingRecipe.getUserId())) {
+        log.warn("User {} attempted to update sharing for recipe {} owned by {}",
+            userId, recipeId, existingRecipe.getUserId());
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+      }
+
+      // Update only the isPublic field and updatedAt timestamp
+      Recipe updatedRecipe = existingRecipe.toBuilder()
+          .isPublic(isPublic)
+          .updatedAt(Instant.now())
+          .build();
+
+      ApiFuture<WriteResult> writeFuture = docRef.set(updatedRecipe);
+      writeFuture.get();
+
+      log.info("Updated sharing status for recipe {} to {} by user {}", recipeId, isPublic, userId);
+      return mapToResponse(updatedRecipe);
+    } catch (InterruptedException | ExecutionException e) {
+      log.error("Error updating recipe sharing in Firestore", e);
+      throw new RuntimeException("Failed to update recipe sharing", e);
+    }
+  }
+
+  /**
    * Map Recipe entity to RecipeResponse DTO.
    */
   private RecipeResponse mapToResponse(Recipe recipe) {

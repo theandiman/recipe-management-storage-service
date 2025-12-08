@@ -190,4 +190,32 @@ public class RecipeController {
         recipeService.deleteRecipe(recipeId, userId);
         return ResponseEntity.noContent().build();
     }
+
+    /**
+     * Update the sharing status of a recipe.
+     * Requires Firebase authentication and user must own the recipe.
+     *
+     * @param recipeId The recipe ID to update
+     * @param isPublic The new sharing status
+     * @param userId   The authenticated user's Firebase UID (injected by auth filter)
+     * @return The updated recipe
+     */
+    @org.springframework.web.bind.annotation.PatchMapping("/{recipeId}/sharing")
+    @Operation(summary = "Update recipe sharing status", description = "Updates whether a recipe is public or private. User must own the recipe. "
+            + "Requires Firebase authentication token in Authorization header.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Sharing status updated successfully", content = @Content(schema = @Schema(implementation = RecipeResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized - invalid or missing Firebase token", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Forbidden - user does not own this recipe", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Recipe not found", content = @Content)
+    })
+    public ResponseEntity<RecipeResponse> updateRecipeSharing(
+            @Parameter(description = "Recipe ID to update", required = true) @PathVariable String recipeId,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "New sharing status", required = true) @RequestBody boolean isPublic,
+            @Parameter(hidden = true) @RequestAttribute("userId") String userId) {
+
+        log.info("Updating sharing status for recipe {} to {} for user {}", recipeId, isPublic, userId);
+        RecipeResponse response = recipeService.updateRecipeSharing(recipeId, isPublic, userId);
+        return ResponseEntity.ok(response);
+    }
 }
