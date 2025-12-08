@@ -2,6 +2,7 @@ package com.recipe.storage.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -26,7 +27,14 @@ public class CorsConfig {
                 "https://recipe-mgmt-dev.web.app", // Firebase Hosting (dev)
                 "https://recipe-mgmt-dev.firebaseapp.com" // Firebase Hosting (dev alt)
             )
-            .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
+            .allowedMethods(
+                HttpMethod.DELETE.name(),
+                HttpMethod.GET.name(),
+                HttpMethod.OPTIONS.name(),
+                HttpMethod.PATCH.name(),
+                HttpMethod.POST.name(),
+                HttpMethod.PUT.name()
+            )
             .allowedHeaders("*")
             .exposedHeaders("*")
             .allowCredentials(true)
