@@ -413,7 +413,7 @@ public class RecipeService {
           .updatedAt(Instant.now())
           .build();
 
-      ApiFuture<WriteResult> writeFuture = docRef.set(updatedRecipe);
+      ApiFuture<WriteResult> writeFuture = docRef.update("isPublic", updatedRecipe.isPublic(), "updatedAt", updatedRecipe.getUpdatedAt());
       writeFuture.get();
 
       log.info("Updated sharing status for recipe {} to {} by user {}", recipeId, isPublic, userId);
