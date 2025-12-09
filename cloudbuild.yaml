@@ -134,14 +134,15 @@ steps:
         # -r: HTML report name
         # -w: markdown report name
         # -J: JSON report name
+        # -l: minimum risk level to fail the build (HIGH)
         # -I: ignore warnings (non-zero exit for info level findings)
-        zap-baseline.py -t "$SERVICE_URL/actuator/health" \
+        zap-baseline.py -t "$SERVICE_URL" \
           -g gen.conf \
           -m 5 \
           -r /workspace/zap-report.html \
           -w /workspace/zap-report.md \
           -J /workspace/zap-report.json \
-          -I || true
+          -l HIGH -I
         
         echo "ZAP scan complete. Reports saved to /workspace/zap-report.*"
     waitFor: ['deploy-storage']
