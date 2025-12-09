@@ -111,8 +111,16 @@ test_endpoint_with_response "/actuator/health" "200" "Health endpoint" "true" ||
 # Test 2: Public recipes endpoint (should be accessible without auth)
 test_endpoint_with_response "/api/recipes/public" "200" "Public recipes endpoint" "true" || true
 
-# Test 3: Swagger UI endpoint
-test_endpoint "/swagger-ui.html" "200" "Swagger UI endpoint" || true
+# Test 3: Swagger UI endpoint (follows redirects)
+echo -n "Testing: Swagger UI endpoint... "
+status_code=$(curl -s -o /dev/null -w "%{http_code}" -L --fail-with-body --connect-timeout 5 --max-time 10 "$SERVICE_URL/swagger-ui.html")
+if [ "$status_code" = "200" ]; then
+    echo -e "${GREEN}✓ PASSED${NC} (HTTP $status_code after redirect)"
+    ((TESTS_PASSED++))
+else
+    echo -e "${RED}✗ FAILED${NC} (Expected HTTP 200, got HTTP $status_code)"
+    ((TESTS_FAILED++))
+fi
 
 # Test 4: OpenAPI spec endpoint
 test_endpoint_with_response "/v3/api-docs" "200" "OpenAPI specification endpoint" "true" || true
