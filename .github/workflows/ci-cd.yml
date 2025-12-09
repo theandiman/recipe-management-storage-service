@@ -233,32 +233,8 @@ jobs:
           echo "Check ZAP container output above for errors"
         fi
 
-    - name: Upload ZAP reports to Cloud Storage
-      run: |
-        # Check if reports exist
-        if [ ! -f "zap-reports/zap-report.html" ]; then
-          echo "No ZAP reports found to upload - skipping Cloud Storage upload"
-          exit 0
-        fi
-        
-        # Create bucket if it doesn't exist
-        gsutil mb -p ${{ secrets.GCP_PROJECT_ID }} -l $REGION gs://${{ secrets.GCP_PROJECT_ID }}-security-reports 2>/dev/null || true
-        
-        # Upload reports with timestamp
-        TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-        gsutil -m cp zap-reports/zap-report.* \
-          gs://${{ secrets.GCP_PROJECT_ID }}-security-reports/$SERVICE_NAME/zap/$TIMESTAMP/
-        
-        echo "ZAP reports uploaded to gs://${{ secrets.GCP_PROJECT_ID }}-security-reports/$SERVICE_NAME/zap/$TIMESTAMP/"
-        
-        # Make the HTML report publicly readable
-        gsutil iam ch allUsers:objectViewer \
-          gs://${{ secrets.GCP_PROJECT_ID }}-security-reports/$SERVICE_NAME/zap/$TIMESTAMP/zap-report.html || true
-        
-        echo "View report: https://storage.googleapis.com/${{ secrets.GCP_PROJECT_ID }}-security-reports/$SERVICE_NAME/zap/$TIMESTAMP/zap-report.html"
-
-    - name: Upload ZAP reports as artifacts
-      if: hashFiles('zap-reports/zap-report.html') != ''
+    - name: Upload ZAP Reports as Artifacts
+      if: github.ref == 'refs/heads/main' && hashFiles('zap-reports/zap-report.html') != ''
       uses: actions/upload-artifact@v4
       with:
         name: zap-security-reports
