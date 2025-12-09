@@ -256,12 +256,12 @@ jobs:
     - name: Run post-deployment tests
       run: |
         SERVICE_URL="${{ needs.deploy.outputs.service-url }}"
-        
+
         echo "Running post-deployment tests against $SERVICE_URL"
-        
+
         # Make test script executable
         chmod +x test-deployment.sh
-        
+
         # Run the tests
         ./test-deployment.sh "$SERVICE_URL"
 
