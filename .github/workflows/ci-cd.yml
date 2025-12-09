@@ -140,7 +140,7 @@ jobs:
           -v $(pwd):/zap/wrk:rw \
           ghcr.io/zaproxy/zaproxy:stable \
           zap-baseline.py \
-          -t "$SERVICE_URL/actuator/health" \
+          -t "$SERVICE_URL" \
           -g gen.conf \
           -m 5 \
           -r zap-report.html \
