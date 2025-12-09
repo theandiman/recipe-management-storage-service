@@ -120,8 +120,8 @@ Check the Cloud Build logs for the direct link to the HTML report, or access via
 # List recent scans
 gsutil ls gs://${PROJECT_ID}-security-reports/recipe-storage-service/zap/
 
-# Download latest HTML report
-gsutil cp gs://${PROJECT_ID}-security-reports/recipe-storage-service/zap/latest/zap-report.html .
+# Download a report by replacing TIMESTAMP with a real value from the `gsutil ls` command above.
+gsutil cp gs://${PROJECT_ID}-security-reports/recipe-storage-service/zap/TIMESTAMP/zap-report.html .
 ```
 
 ## Scan Configuration
