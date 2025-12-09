@@ -135,7 +135,7 @@ steps:
         # -w: markdown report name
         # -J: JSON report name
         # -l: minimum risk level to fail the build (HIGH)
-        # -I: ignore warnings (non-zero exit for info level findings)
+        # -I: ignore informational level findings in reports
         zap-baseline.py -t "$SERVICE_URL" \
           -g gen.conf \
           -m 5 \
