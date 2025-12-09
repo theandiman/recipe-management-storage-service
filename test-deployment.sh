@@ -11,6 +11,19 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Check dependencies
+if ! command -v curl &> /dev/null; then
+    echo -e "${RED}Error: curl is not installed${NC}"
+    exit 1
+fi
+
+if ! command -v jq &> /dev/null; then
+    echo -e "${YELLOW}Warning: jq is not installed. JSON validation will be skipped.${NC}"
+    JQ_AVAILABLE=false
+else
+    JQ_AVAILABLE=true
+fi
+
 # Get service URL from command line or use default
 SERVICE_URL="${1:-http://localhost:8081}"
 
@@ -29,12 +42,12 @@ test_endpoint() {
     local endpoint=$1
     local expected_status=$2
     local description=$3
-    
+
     echo -n "Testing: $description... "
-    
+
     # Make request and capture status code
-    status_code=$(curl -s -o /dev/null -w "%{http_code}" "$SERVICE_URL$endpoint" --max-time 10)
-    
+    status_code=$(curl -s -o /dev/null -w "%{http_code}" --fail-with-body --connect-timeout 5 --max-time 10 "$SERVICE_URL$endpoint")
+
     if [ "$status_code" = "$expected_status" ]; then
         echo -e "${GREEN}✓ PASSED${NC} (HTTP $status_code)"
         ((TESTS_PASSED++))
@@ -52,22 +65,22 @@ test_endpoint_with_response() {
     local expected_status=$2
     local description=$3
     local check_json=$4
-    
+
     echo -n "Testing: $description... "
-    
+
     # Make request and capture both status code and response
-    response=$(curl -s -w "\n%{http_code}" "$SERVICE_URL$endpoint" --max-time 10)
+    response=$(curl -s -w "\n%{http_code}" --fail-with-body --connect-timeout 5 --max-time 10 "$SERVICE_URL$endpoint")
     status_code=$(echo "$response" | tail -n1)
     body=$(echo "$response" | sed '$d')
-    
+
     if [ "$status_code" != "$expected_status" ]; then
         echo -e "${RED}✗ FAILED${NC} (Expected HTTP $expected_status, got HTTP $status_code)"
         ((TESTS_FAILED++))
         return 1
     fi
-    
-    # If check_json is true, verify response is valid JSON
-    if [ "$check_json" = "true" ]; then
+
+    # If check_json is true and jq is available, verify response is valid JSON
+    if [ "$check_json" = "true" ] && [ "$JQ_AVAILABLE" = true ]; then
         if echo "$body" | jq empty 2>/dev/null; then
             echo -e "${GREEN}✓ PASSED${NC} (HTTP $status_code, valid JSON)"
             ((TESTS_PASSED++))
@@ -101,7 +114,7 @@ test_endpoint_with_response "/v3/api-docs" "200" "OpenAPI specification endpoint
 
 # Test 5: Protected endpoint without auth (should return 401 or 403)
 echo -n "Testing: Protected endpoint without auth... "
-status_code=$(curl -s -o /dev/null -w "%{http_code}" "$SERVICE_URL/api/recipes" --max-time 10)
+status_code=$(curl -s -o /dev/null -w "%{http_code}" --fail-with-body --connect-timeout 5 --max-time 10 "$SERVICE_URL/api/recipes")
 if [ "$status_code" = "401" ] || [ "$status_code" = "403" ]; then
     echo -e "${GREEN}✓ PASSED${NC} (HTTP $status_code - correctly blocked)"
     ((TESTS_PASSED++))
