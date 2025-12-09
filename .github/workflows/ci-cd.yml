@@ -69,6 +69,10 @@ jobs:
         echo "Building with version: $VERSION"
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "$VERSION" > .build_version
+        
+        # Debug: verify file was created
+        ls -la .build_version
+        cat .build_version
 
     - name: Configure Maven for GitHub Packages
       run: |
@@ -106,6 +110,7 @@ jobs:
           target/*.jar
           .build_version
         retention-days: 1
+        include-hidden-files: false
 
   docker:
     name: Build and Push Docker Image
