@@ -69,9 +69,10 @@ test_endpoint_with_response() {
     echo -n "Testing: $description... "
 
     # Make request and capture both status code and response
-    response=$(curl -s -w "\n%{http_code}" --fail-with-body --connect-timeout 5 --max-time 10 "$SERVICE_URL$endpoint")
-    status_code=$(echo "$response" | tail -n1)
-    body=$(echo "$response" | sed '$d')
+    tmpfile=$(mktemp)
+    status_code=$(curl -s -o "$tmpfile" -w "%{http_code}" --fail-with-body --connect-timeout 5 --max-time 10 "$SERVICE_URL$endpoint")
+    body=$(cat "$tmpfile")
+    rm -f "$tmpfile"
 
     if [ "$status_code" != "$expected_status" ]; then
         echo -e "${RED}✗ FAILED${NC} (Expected HTTP $expected_status, got HTTP $status_code)"
