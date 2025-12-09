@@ -162,10 +162,8 @@ jobs:
           gsutil -m cp zap-report.* \
             gs://${{ secrets.GCP_PROJECT_ID }}-security-reports/$SERVICE_NAME/zap/$TIMESTAMP/
           echo "ZAP reports uploaded to gs://${{ secrets.GCP_PROJECT_ID }}-security-reports/$SERVICE_NAME/zap/$TIMESTAMP/"
-          # Make the HTML report publicly readable
-          gsutil iam ch allUsers:objectViewer \
-            gs://${{ secrets.GCP_PROJECT_ID }}-security-reports/$SERVICE_NAME/zap/$TIMESTAMP/zap-report.html || true
-          echo "View report: https://storage.googleapis.com/${{ secrets.GCP_PROJECT_ID }}-security-reports/$SERVICE_NAME/zap/$TIMESTAMP/zap-report.html"
+          echo "Note: Reports are stored in Cloud Storage but not publicly accessible for security reasons."
+          echo "Use 'gsutil' with appropriate credentials to access the reports, or download them from the workflow artifacts."
         else
           echo "Warning: No ZAP reports found to upload"
         fi
