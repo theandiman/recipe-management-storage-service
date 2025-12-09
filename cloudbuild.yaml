@@ -128,7 +128,17 @@ steps:
         fi
         
         # Read the service URL from the file created by deploy-storage step
+        if [ ! -f /workspace/service-url.txt ]; then
+          echo "ERROR: Service URL file not found. Deploy step may have failed."
+          exit 1
+        fi
+        
         SERVICE_URL=$(cat /workspace/service-url.txt)
+        
+        if [ -z "$SERVICE_URL" ]; then
+          echo "ERROR: Service URL is empty"
+          exit 1
+        fi
         
         echo "Running OWASP ZAP baseline scan against $SERVICE_URL"
         
