@@ -177,6 +177,7 @@ jobs:
           zap-report.md
           zap-report.json
         retention-days: 30
+        if-no-files-found: warn
 
     - name: Prepare next development version
       if: github.ref == 'refs/heads/main'
