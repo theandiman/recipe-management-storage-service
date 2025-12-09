@@ -273,8 +273,16 @@ jobs:
 
         echo "Preparing next development version..."
 
-        # Make version.sh executable and add SNAPSHOT suffix
+        # Make version.sh executable
         chmod +x version.sh
+        
+        # First, remove SNAPSHOT suffix if present
+        ./version.sh remove-snapshot || true
+        
+        # Then bump patch version for next development cycle
+        ./version.sh bump-patch
+        
+        # Finally, add SNAPSHOT suffix for development
         ./version.sh add-snapshot
 
         NEXT_VERSION=$(./version.sh current | sed 's/Current version: //')
