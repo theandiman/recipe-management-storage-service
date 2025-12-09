@@ -241,10 +241,34 @@ jobs:
         path: zap-reports/zap-report.*
         retention-days: 30
 
+  post-deployment-test:
+    name: Post-Deployment Testing
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run post-deployment tests
+      run: |
+        SERVICE_URL="${{ needs.deploy.outputs.service-url }}"
+        
+        echo "Running post-deployment tests against $SERVICE_URL"
+        
+        # Make test script executable
+        chmod +x test-deployment.sh
+        
+        # Run the tests
+        ./test-deployment.sh "$SERVICE_URL"
+
   version-bump:
     name: Prepare Next Development Version
     runs-on: ubuntu-latest
-    needs: security-scan
+    needs: [security-scan, post-deployment-test]
     if: github.ref == 'refs/heads/main'
     permissions:
       contents: write  # For committing and pushing version changes
