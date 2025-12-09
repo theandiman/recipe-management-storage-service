@@ -72,3 +72,137 @@ gitleaks protect --staged
 ## Need Help?
 
 See the [Gitleaks documentation](https://github.com/gitleaks/gitleaks) for more information.
+
+---
+
+# OWASP ZAP Security Scanning
+
+This repository includes automated security scanning using [OWASP ZAP](https://www.zaproxy.org/) (Zed Attack Proxy) in the CI/CD pipeline.
+
+## How It Works
+
+OWASP ZAP runs automatically on every **main branch** deployment:
+
+1. Application is deployed to Cloud Run
+2. ZAP baseline scan runs against the deployed service
+3. Security reports are generated and uploaded to Cloud Storage
+4. HTML, Markdown, and JSON reports are available for review
+
+## What ZAP Scans For
+
+The baseline scan performs passive security checks including:
+
+- **Cross-Site Scripting (XSS)** vulnerabilities
+- **SQL Injection** potential
+- **Insecure Headers** (missing security headers)
+- **Cookie Security** issues
+- **Information Disclosure** risks
+- **Outdated Components** with known vulnerabilities
+
+## Viewing Scan Reports
+
+After each main branch build, reports are uploaded to:
+
+```
+gs://${PROJECT_ID}-security-reports/recipe-storage-service/zap/${TIMESTAMP}/
+```
+
+Three report formats are available:
+- **HTML**: `zap-report.html` - Visual report (IAM-controlled access)
+- **Markdown**: `zap-report.md` - Text-based summary
+- **JSON**: `zap-report.json` - Machine-readable format
+
+### Access Reports
+
+Check the Cloud Build logs for the direct link to the HTML report, or access via:
+
+```bash
+# List recent scans
+gsutil ls gs://${PROJECT_ID}-security-reports/recipe-storage-service/zap/
+
+# Download a specific HTML report (replace YYYYMMDD-HHMMSS with actual timestamp)
+gsutil cp gs://${PROJECT_ID}-security-reports/recipe-storage-service/zap/YYYYMMDD-HHMMSS/zap-report.html .
+```
+
+## Scan Configuration
+
+The ZAP baseline scan is configured with:
+- **Target**: Full service URL (root endpoint)
+- **Mode**: Passive scan only (safe for production)
+- **Timeout**: 5 minutes maximum
+- **Exit Strategy**: Fails build on HIGH risk findings
+
+## Understanding Results
+
+ZAP findings are categorized by risk level:
+
+| Risk Level | Severity | Action Required |
+|------------|----------|-----------------|
+| 🔴 High | Critical | Fix immediately |
+| 🟠 Medium | Important | Address in next sprint |
+| 🟡 Low | Minor | Consider fixing |
+| ℹ️ Informational | FYI | Review for best practices |
+
+## Running ZAP Locally
+
+Test security scanning locally before pushing:
+
+```bash
+# Using Docker
+docker run -t ghcr.io/zaproxy/zaproxy:stable \
+  zap-baseline.py -t http://localhost:8080 \
+  -r zap-report.html \
+  -l HIGH -I
+
+# View the report
+open zap-report.html
+```
+
+## CI/CD Integration
+
+ZAP scanning is integrated into `cloudbuild.yaml`:
+
+- **Step**: `security-scan-zap`
+- **Runs On**: Main branch only, after deployment
+- **Reports To**: Cloud Storage bucket
+- **Duration**: ~2-5 minutes
+
+## Best Practices
+
+✅ **DO:**
+- Review ZAP reports after each deployment
+- Address High and Medium findings promptly
+- Use security headers (CSP, HSTS, X-Frame-Options)
+- Keep dependencies updated
+- Enable HTTPS everywhere
+
+❌ **DON'T:**
+- Ignore High-risk findings
+- Disable security scans
+- Expose sensitive endpoints without authentication
+- Use deprecated security configurations
+
+## Troubleshooting
+
+### Scan Fails or Times Out
+
+- Check if the service is healthy: `curl https://your-service-url`
+- Increase timeout in `cloudbuild.yaml` if needed
+- Review ZAP logs in Cloud Build output
+
+### False Positives
+
+Create a ZAP configuration file to suppress false positives:
+
+```bash
+# Add to .zap/rules.tsv in repository
+# Format: rule-id,state,threshold
+10096,IGNORE,OFF  # Example: ignore timestamp disclosure
+```
+
+## Additional Resources
+
+- [OWASP ZAP Documentation](https://www.zaproxy.org/docs/)
+- [ZAP Baseline Scan](https://www.zaproxy.org/docs/docker/baseline-scan/)
+- [OWASP Top 10](https://owasp.org/www-project-top-ten/)
+
