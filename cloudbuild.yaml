@@ -106,6 +106,13 @@ steps:
           --region ${_REGION}
         
         echo "Deployment complete ✓"
+        
+        # Get the service URL and save it for the ZAP scan step
+        SERVICE_URL=$(gcloud run services describe ${_SERVICE_NAME} \
+          --region ${_REGION} \
+          --format='value(status.url)')
+        echo "$SERVICE_URL" > /workspace/service-url.txt
+        echo "Service URL saved: $SERVICE_URL"
 
   # OWASP ZAP Security Scan - ONLY on main branch after deployment
   - name: 'ghcr.io/zaproxy/zaproxy:stable'
@@ -120,10 +127,8 @@ steps:
           exit 0
         fi
         
-        # Get the service URL
-        SERVICE_URL=$(gcloud run services describe ${_SERVICE_NAME} \
-          --region ${_REGION} \
-          --format='value(status.url)')
+        # Read the service URL from the file created by deploy-storage step
+        SERVICE_URL=$(cat /workspace/service-url.txt)
         
         echo "Running OWASP ZAP baseline scan against $SERVICE_URL"
         
