@@ -158,12 +158,15 @@ jobs:
         
         # Upload reports with timestamp
         TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-        gsutil -m cp zap-report.* \
-          gs://${{ secrets.GCP_PROJECT_ID }}-security-reports/$SERVICE_NAME/zap/$TIMESTAMP/
-        
-        echo "ZAP reports uploaded to gs://${{ secrets.GCP_PROJECT_ID }}-security-reports/$SERVICE_NAME/zap/$TIMESTAMP/"
-        echo "Note: Reports are stored in Cloud Storage but not publicly accessible for security reasons."
-        echo "Use 'gsutil' with appropriate credentials to access the reports, or download them from the workflow artifacts."
+        if ls zap-report.* 1> /dev/null 2>&1; then
+          gsutil -m cp zap-report.* \
+            gs://${{ secrets.GCP_PROJECT_ID }}-security-reports/$SERVICE_NAME/zap/$TIMESTAMP/
+          echo "ZAP reports uploaded to gs://${{ secrets.GCP_PROJECT_ID }}-security-reports/$SERVICE_NAME/zap/$TIMESTAMP/"
+          echo "Note: Reports are stored in Cloud Storage but not publicly accessible for security reasons."
+          echo "Use 'gsutil' with appropriate credentials to access the reports, or download them from the workflow artifacts."
+        else
+          echo "Warning: No ZAP reports found to upload"
+        fi
 
     - name: Upload ZAP Reports as Artifacts
       if: github.ref == 'refs/heads/main'
