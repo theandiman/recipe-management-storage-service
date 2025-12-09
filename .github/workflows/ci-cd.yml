@@ -19,8 +19,14 @@ env:
   REGION: europe-west2
 
 jobs:
-  build-and-deploy:
+  build:
+    name: Build and Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write  # For uploading artifacts
+    outputs:
+      version: ${{ steps.version.outputs.version }}
 
     steps:
     - name: Checkout code
@@ -91,15 +97,42 @@ jobs:
     - name: Build application
       run: mvn package -DskipTests
 
-    - name: Authenticate to Google Cloud
+    - name: Upload build artifacts
       if: github.ref == 'refs/heads/main'
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-artifacts
+        path: |
+          target/*.jar
+          .build_version
+        retention-days: 1
+
+  docker:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      actions: read  # For downloading artifacts
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      # Required for Dockerfile and source context during docker build
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4.1.3
+      with:
+        name: build-artifacts
+
+    - name: Authenticate to Google Cloud
       run: |
         echo "${{ secrets.GCP_SA_KEY }}" | base64 --decode > /tmp/sa-key.json
         gcloud auth activate-service-account --key-file=/tmp/sa-key.json
         gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
 
     - name: Build and push Docker image
-      if: github.ref == 'refs/heads/main'
       run: |
         VERSION=$(cat .build_version)
         echo "Tagging image with version: $VERSION"
@@ -117,21 +150,60 @@ jobs:
         docker push $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-storage/$SERVICE_NAME:$GITHUB_SHA
         docker push $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-storage/$SERVICE_NAME:$VERSION
 
+  deploy:
+    name: Deploy to Cloud Run
+    runs-on: ubuntu-latest
+    needs: docker
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      actions: read  # For downloading artifacts
+    outputs:
+      service-url: ${{ steps.deploy.outputs.service-url }}
+
+    steps:
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4.1.3
+      with:
+        name: build-artifacts
+
+    - name: Authenticate to Google Cloud
+      run: |
+        echo "${{ secrets.GCP_SA_KEY }}" | base64 --decode > /tmp/sa-key.json
+        gcloud auth activate-service-account --key-file=/tmp/sa-key.json
+        gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+
     - name: Deploy to Cloud Run
-      if: github.ref == 'refs/heads/main'
+      id: deploy
       run: |
         VERSION=$(cat .build_version)
         gcloud run services update $SERVICE_NAME \
           --image $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-storage/$SERVICE_NAME:$VERSION \
           --region $REGION
 
-    - name: OWASP ZAP Security Scan
-      if: github.ref == 'refs/heads/main'
-      run: |
-        # Get the service URL
+        # Get the service URL for security scanning
         SERVICE_URL=$(gcloud run services describe $SERVICE_NAME \
           --region $REGION \
           --format='value(status.url)')
+        echo "service-url=$SERVICE_URL" >> $GITHUB_OUTPUT
+
+  security-scan:
+    name: OWASP ZAP Security Scan
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      actions: write  # For uploading artifacts
+
+    steps:
+    - name: Authenticate to Google Cloud
+      run: |
+        echo "${{ secrets.GCP_SA_KEY }}" | base64 --decode > /tmp/sa-key.json
+        gcloud auth activate-service-account --key-file=/tmp/sa-key.json
+        gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+
+    - name: Run OWASP ZAP scan
+      run: |
+        SERVICE_URL="${{ needs.deploy.outputs.service-url }}"
         
         echo "Running OWASP ZAP baseline scan against $SERVICE_URL"
         
@@ -169,8 +241,22 @@ jobs:
         path: zap-reports/zap-report.*
         retention-days: 30
 
+  version-bump:
+    name: Prepare Next Development Version
+    runs-on: ubuntu-latest
+    needs: security-scan
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write  # For committing and pushing version changes
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 2
+        token: ${{ secrets.GIT_PAT }}
+
     - name: Prepare next development version
-      if: github.ref == 'refs/heads/main'
       run: |
         # Prevent infinite build loops: skip if this commit was already a version bump
         if git log -1 --pretty=format:'%an' | grep -q "CI Bot"; then
@@ -180,7 +266,8 @@ jobs:
 
         echo "Preparing next development version..."
 
-        # Add SNAPSHOT suffix for continued development
+        # Make version.sh executable and add SNAPSHOT suffix
+        chmod +x version.sh
         ./version.sh add-snapshot
 
         NEXT_VERSION=$(./version.sh current | sed 's/Current version: //')
