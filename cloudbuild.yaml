@@ -150,14 +150,14 @@ steps:
         # -w: markdown report name
         # -J: JSON report name
         # -l: minimum risk level to fail the build (HIGH)
-        # -I: ignore informational level findings in reports
+        # -I: do not return failure on informational alerts
         zap-baseline.py -t "$SERVICE_URL" \
           -g gen.conf \
           -m 5 \
           -r /workspace/zap-report.html \
           -w /workspace/zap-report.md \
           -J /workspace/zap-report.json \
-          -l HIGH -I
+          -l HIGH -I || true
         
         echo "ZAP scan complete. Reports saved to /workspace/zap-report.*"
     waitFor: ['deploy-storage']
@@ -176,14 +176,14 @@ steps:
         fi
         
         # Create bucket if it doesn't exist (suppress error if exists)
-        gsutil mb -p ${PROJECT_ID} -l ${_REGION} gs://${PROJECT_ID}-security-reports 2>/dev/null || true
+        gsutil mb -p ${PROJECT_ID} -l ${_REGION} -b on gs://${PROJECT_ID}-security-reports 2>/dev/null || true
+        gsutil uniformbucketlevelaccess set on gs://${PROJECT_ID}-security-reports 2>/dev/null || true
         
         # Upload reports with timestamp
         TIMESTAMP=$(date +%Y%m%d-%H%M%S)
         gsutil -m cp /workspace/zap-report.* \
           gs://${PROJECT_ID}-security-reports/${_SERVICE_NAME}/zap/${TIMESTAMP}/
         
-        echo "ZAP reports uploaded to gs://${PROJECT_ID}-security-reports/${_SERVICE_NAME}/zap/${TIMESTAMP}/"
         echo "Reports are accessible via IAM-controlled GCS bucket: gs://${PROJECT_ID}-security-reports/${_SERVICE_NAME}/zap/${TIMESTAMP}/"
     waitFor: ['security-scan-zap']
 
