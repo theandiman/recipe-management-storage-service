@@ -127,7 +127,7 @@ test_endpoint_with_response "/v3/api-docs" "200" "OpenAPI specification endpoint
 
 # Test 5: Protected endpoint without auth (should return 401 or 403)
 echo -n "Testing: Protected endpoint without auth... "
-status_code=$(curl -s -o /dev/null -w "%{http_code}" --fail-with-body --connect-timeout 5 --max-time 10 "$SERVICE_URL/api/recipes")
+status_code=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 10 "$SERVICE_URL/api/recipes")
 if [ "$status_code" = "401" ] || [ "$status_code" = "403" ]; then
     echo -e "${GREEN}✓ PASSED${NC} (HTTP $status_code - correctly blocked)"
     ((TESTS_PASSED++))
