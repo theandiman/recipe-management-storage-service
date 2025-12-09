@@ -127,10 +127,10 @@ gsutil cp gs://${PROJECT_ID}-security-reports/recipe-storage-service/zap/YYYYMMD
 ## Scan Configuration
 
 The ZAP baseline scan is configured with:
-- **Target**: Service health endpoint (`/actuator/health`)
+- **Target**: Full service URL (root endpoint)
 - **Mode**: Passive scan only (safe for production)
 - **Timeout**: 5 minutes maximum
-- **Exit Strategy**: Non-blocking (warnings don't fail the build)
+- **Exit Strategy**: Fails build on HIGH risk findings
 
 ## Understanding Results
 
@@ -150,8 +150,9 @@ Test security scanning locally before pushing:
 ```bash
 # Using Docker
 docker run -t ghcr.io/zaproxy/zaproxy:stable \
-  zap-baseline.py -t http://localhost:8080/actuator/health \
-  -r zap-report.html
+  zap-baseline.py -t http://localhost:8080 \
+  -r zap-report.html \
+  -l HIGH -I
 
 # View the report
 open zap-report.html
@@ -185,7 +186,7 @@ ZAP scanning is integrated into `cloudbuild.yaml`:
 
 ### Scan Fails or Times Out
 
-- Check if the service is healthy: `curl https://your-service-url/actuator/health`
+- Check if the service is healthy: `curl https://your-service-url`
 - Increase timeout in `cloudbuild.yaml` if needed
 - Review ZAP logs in Cloud Build output
 
