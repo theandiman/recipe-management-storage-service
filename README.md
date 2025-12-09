@@ -1,3 +1,4 @@
+[![CI/CD Pipeline](https://github.com/theandiman/recipe-management-storage-service/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/theandiman/recipe-management-storage-service/actions/workflows/ci-cd.yml)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=theandiman_recipe-management-storage-service&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=theandiman_recipe-management-storage-service)
 [![Sonar Tech Debt](https://img.shields.io/sonar/tech_debt/theandiman_recipe-management-storage-service?server=https://sonarcloud.io)](https://sonarcloud.io/summary/new_code?id=theandiman_recipe-management-storage-service)
 [![Sonar Violations](https://img.shields.io/sonar/violations/theandiman_recipe-management-storage-service?server=https://sonarcloud.io)](https://sonarcloud.io/summary/new_code?id=theandiman_recipe-management-storage-service)
