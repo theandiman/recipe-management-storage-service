@@ -107,6 +107,75 @@ steps:
         
         echo "Deployment complete ✓"
 
+  # OWASP ZAP Security Scan - ONLY on main branch after deployment
+  - name: 'ghcr.io/zaproxy/zaproxy:stable'
+    id: 'security-scan-zap'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        # Only run on main branch after deployment
+        if [ "$BRANCH_NAME" != "main" ]; then
+          echo "PR build detected (branch: $BRANCH_NAME), skipping OWASP ZAP scan"
+          exit 0
+        fi
+        
+        # Get the service URL
+        SERVICE_URL=$(gcloud run services describe ${_SERVICE_NAME} \
+          --region ${_REGION} \
+          --format='value(status.url)')
+        
+        echo "Running OWASP ZAP baseline scan against $SERVICE_URL"
+        
+        # Run ZAP baseline scan (passive scan only, safe for production)
+        # -t: target URL
+        # -g: generate config file
+        # -m: maximum time in minutes
+        # -r: HTML report name
+        # -w: markdown report name
+        # -J: JSON report name
+        # -I: ignore warnings (non-zero exit for info level findings)
+        zap-baseline.py -t "$SERVICE_URL/actuator/health" \
+          -g gen.conf \
+          -m 5 \
+          -r /workspace/zap-report.html \
+          -w /workspace/zap-report.md \
+          -J /workspace/zap-report.json \
+          -I || true
+        
+        echo "ZAP scan complete. Reports saved to /workspace/zap-report.*"
+    waitFor: ['deploy-storage']
+
+  # Upload ZAP reports to Cloud Storage - ONLY on main branch
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'upload-zap-reports'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        # Only upload on main branch
+        if [ "$BRANCH_NAME" != "main" ]; then
+          echo "PR build detected (branch: $BRANCH_NAME), skipping ZAP report upload"
+          exit 0
+        fi
+        
+        # Create bucket if it doesn't exist (suppress error if exists)
+        gsutil mb -p ${PROJECT_ID} -l ${_REGION} gs://${PROJECT_ID}-security-reports 2>/dev/null || true
+        
+        # Upload reports with timestamp
+        TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+        gsutil -m cp /workspace/zap-report.* \
+          gs://${PROJECT_ID}-security-reports/${_SERVICE_NAME}/zap/${TIMESTAMP}/
+        
+        echo "ZAP reports uploaded to gs://${PROJECT_ID}-security-reports/${_SERVICE_NAME}/zap/${TIMESTAMP}/"
+        
+        # Make the HTML report publicly readable (optional)
+        gsutil iam ch allUsers:objectViewer \
+          gs://${PROJECT_ID}-security-reports/${_SERVICE_NAME}/zap/${TIMESTAMP}/zap-report.html || true
+        
+        echo "View report: https://storage.googleapis.com/${PROJECT_ID}-security-reports/${_SERVICE_NAME}/zap/${TIMESTAMP}/zap-report.html"
+    waitFor: ['security-scan-zap']
+
 # Substitutions for different environments
 substitutions:
   _SERVICE_NAME: 'recipe-storage-service'
