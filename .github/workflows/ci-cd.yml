@@ -113,6 +113,7 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      # Required for Dockerfile and source context during docker build
 
     - name: Download build artifacts
       uses: actions/download-artifact@v4
