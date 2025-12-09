@@ -106,6 +106,86 @@ steps:
           --region ${_REGION}
         
         echo "Deployment complete ✓"
+        
+        # Get the service URL and save it for the ZAP scan step
+        SERVICE_URL=$(gcloud run services describe ${_SERVICE_NAME} \
+          --region ${_REGION} \
+          --format='value(status.url)')
+        echo "$SERVICE_URL" > /workspace/service-url.txt
+        echo "Service URL saved: $SERVICE_URL"
+
+  # OWASP ZAP Security Scan - ONLY on main branch after deployment
+  - name: 'ghcr.io/zaproxy/zaproxy:stable'
+    id: 'security-scan-zap'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        # Only run on main branch after deployment
+        if [ "$BRANCH_NAME" != "main" ]; then
+          echo "PR build detected (branch: $BRANCH_NAME), skipping OWASP ZAP scan"
+          exit 0
+        fi
+        
+        # Read the service URL from the file created by deploy-storage step
+        if [ ! -f /workspace/service-url.txt ]; then
+          echo "ERROR: Service URL file not found. Deploy step may have failed."
+          exit 1
+        fi
+        
+        SERVICE_URL=$(cat /workspace/service-url.txt)
+        
+        if [ -z "$SERVICE_URL" ]; then
+          echo "ERROR: Service URL is empty"
+          exit 1
+        fi
+        
+        echo "Running OWASP ZAP baseline scan against $SERVICE_URL"
+        
+        # Run ZAP baseline scan (passive scan only, safe for production)
+        # -t: target URL
+        # -g: generate config file
+        # -m: maximum time in minutes
+        # -r: HTML report name
+        # -w: markdown report name
+        # -J: JSON report name
+        # -l: minimum risk level to fail the build (HIGH)
+        # -I: do not return failure on informational alerts
+        zap-baseline.py -t "$SERVICE_URL" \
+          -g gen.conf \
+          -m 5 \
+          -r /workspace/zap-report.html \
+          -w /workspace/zap-report.md \
+          -J /workspace/zap-report.json \
+          -l HIGH -I || true
+        
+        echo "ZAP scan complete. Reports saved to /workspace/zap-report.*"
+    waitFor: ['deploy-storage']
+
+  # Upload ZAP reports to Cloud Storage - ONLY on main branch
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'upload-zap-reports'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        # Only upload on main branch
+        if [ "$BRANCH_NAME" != "main" ]; then
+          echo "PR build detected (branch: $BRANCH_NAME), skipping ZAP report upload"
+          exit 0
+        fi
+        
+        # Create bucket if it doesn't exist (suppress error if exists)
+        gsutil mb -p ${PROJECT_ID} -l ${_REGION} gs://${PROJECT_ID}-security-reports 2>/dev/null || true
+        gsutil uniformbucketlevelaccess set on gs://${PROJECT_ID}-security-reports 2>/dev/null || true
+        
+        # Upload reports with timestamp
+        TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+        gsutil -m cp /workspace/zap-report.* \
+          gs://${PROJECT_ID}-security-reports/${_SERVICE_NAME}/zap/${TIMESTAMP}/
+        
+        echo "Reports are accessible via IAM-controlled GCS bucket: gs://${PROJECT_ID}-security-reports/${_SERVICE_NAME}/zap/${TIMESTAMP}/"
+    waitFor: ['security-scan-zap']
 
   # OWASP ZAP Security Scan - ONLY on main branch after deployment
   - name: 'ghcr.io/zaproxy/zaproxy:stable'
