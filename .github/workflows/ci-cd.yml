@@ -135,11 +135,14 @@ jobs:
         
         echo "Running OWASP ZAP baseline scan against $SERVICE_URL"
         
+        # Create reports directory
+        mkdir -p zap-reports
+        
         # Run ZAP baseline scan
         # Exit code 0: Success, 1: At least 1 FAIL, 2: At least 1 WARN and no FAILs, 3: Any other failure
         # We use '|| true' to prevent workflow failure on warnings/failures
         docker run --rm \
-          -v $(pwd):/zap/wrk:rw \
+          -v $(pwd)/zap-reports:/zap/wrk:rw \
           ghcr.io/zaproxy/zaproxy:stable \
           zap-baseline.py \
           -t "$SERVICE_URL" \
@@ -149,37 +152,47 @@ jobs:
           -w zap-report.md \
           -J zap-report.json || true
         
-        echo "ZAP scan complete"
+        # Check if reports were generated
+        if [ -f "zap-reports/zap-report.html" ]; then
+          echo "ZAP scan complete - reports generated successfully"
+          ls -lh zap-reports/
+        else
+          echo "Warning: ZAP reports were not generated"
+          echo "Checking ZAP container output above for errors"
+        fi
 
     - name: Upload ZAP Reports to Cloud Storage
       if: github.ref == 'refs/heads/main'
       run: |
+        # Check if reports exist in the zap-reports directory
+        if [ ! -f "zap-reports/zap-report.html" ]; then
+          echo "No ZAP reports found to upload - skipping Cloud Storage upload"
+          exit 0
+        fi
+        
         # Create bucket if it doesn't exist
         gsutil mb -p ${{ secrets.GCP_PROJECT_ID }} -l $REGION gs://${{ secrets.GCP_PROJECT_ID }}-security-reports 2>/dev/null || true
         
         # Upload reports with timestamp
         TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-        if ls zap-report.* 1> /dev/null 2>&1; then
-          gsutil -m cp zap-report.* \
-            gs://${{ secrets.GCP_PROJECT_ID }}-security-reports/$SERVICE_NAME/zap/$TIMESTAMP/
-          echo "ZAP reports uploaded to gs://${{ secrets.GCP_PROJECT_ID }}-security-reports/$SERVICE_NAME/zap/$TIMESTAMP/"
-          echo "Note: Reports are stored in Cloud Storage but not publicly accessible for security reasons."
-          echo "Use 'gsutil' with appropriate credentials to access the reports, or download them from the workflow artifacts."
-        else
-          echo "Warning: No ZAP reports found to upload"
-        fi
+        gsutil -m cp zap-reports/zap-report.* \
+          gs://${{ secrets.GCP_PROJECT_ID }}-security-reports/$SERVICE_NAME/zap/$TIMESTAMP/
+        
+        echo "ZAP reports uploaded to gs://${{ secrets.GCP_PROJECT_ID }}-security-reports/$SERVICE_NAME/zap/$TIMESTAMP/"
+        
+        # Make the HTML report publicly readable
+        gsutil iam ch allUsers:objectViewer \
+          gs://${{ secrets.GCP_PROJECT_ID }}-security-reports/$SERVICE_NAME/zap/$TIMESTAMP/zap-report.html || true
+        
+        echo "View report: https://storage.googleapis.com/${{ secrets.GCP_PROJECT_ID }}-security-reports/$SERVICE_NAME/zap/$TIMESTAMP/zap-report.html"
 
     - name: Upload ZAP Reports as Artifacts
-      if: github.ref == 'refs/heads/main'
+      if: github.ref == 'refs/heads/main' && hashFiles('zap-reports/zap-report.html') != ''
       uses: actions/upload-artifact@v4
       with:
         name: zap-security-reports
-        path: |
-          zap-report.html
-          zap-report.md
-          zap-report.json
+        path: zap-reports/zap-report.*
         retention-days: 30
-        if-no-files-found: warn
 
     - name: Prepare next development version
       if: github.ref == 'refs/heads/main'
