@@ -110,7 +110,7 @@ jobs:
           target/*.jar
           .build_version
         retention-days: 1
-        include-hidden-files: false
+        include-hidden-files: true
 
   docker:
     name: Build and Push Docker Image
