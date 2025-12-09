@@ -163,7 +163,7 @@ jobs:
         
         echo "ZAP reports uploaded to gs://${{ secrets.GCP_PROJECT_ID }}-security-reports/$SERVICE_NAME/zap/$TIMESTAMP/"
         echo "Note: Reports are stored in Cloud Storage but not publicly accessible for security reasons."
-        echo "Use 'gsutil' with appropriate credentials to access the reports, or download them from the workflow artifacts."
+        echo "Access reports via: (1) 'gsutil' with appropriate credentials, or (2) workflow artifacts below."
 
     - name: Upload ZAP Reports as Artifacts
       if: github.ref == 'refs/heads/main'
