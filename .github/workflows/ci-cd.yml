@@ -125,6 +125,7 @@ jobs:
       uses: actions/download-artifact@v4.1.3
       with:
         name: build-artifacts
+        path: .
 
     - name: Authenticate to Google Cloud
       run: |
@@ -165,6 +166,7 @@ jobs:
       uses: actions/download-artifact@v4.1.3
       with:
         name: build-artifacts
+        path: .
 
     - name: Authenticate to Google Cloud
       run: |
