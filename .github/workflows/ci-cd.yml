@@ -125,6 +125,61 @@ jobs:
           --image $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-storage/$SERVICE_NAME:$VERSION \
           --region $REGION
 
+    - name: OWASP ZAP Security Scan
+      if: github.ref == 'refs/heads/main'
+      run: |
+        # Get the service URL
+        SERVICE_URL=$(gcloud run services describe $SERVICE_NAME \
+          --region $REGION \
+          --format='value(status.url)')
+        
+        echo "Running OWASP ZAP baseline scan against $SERVICE_URL"
+        
+        # Run ZAP baseline scan
+        docker run --rm \
+          -v $(pwd):/zap/wrk:rw \
+          ghcr.io/zaproxy/zaproxy:stable \
+          zap-baseline.py \
+          -t "$SERVICE_URL/actuator/health" \
+          -g gen.conf \
+          -m 5 \
+          -r zap-report.html \
+          -w zap-report.md \
+          -J zap-report.json \
+          -I || true
+        
+        echo "ZAP scan complete"
+
+    - name: Upload ZAP Reports to Cloud Storage
+      if: github.ref == 'refs/heads/main'
+      run: |
+        # Create bucket if it doesn't exist
+        gsutil mb -p ${{ secrets.GCP_PROJECT_ID }} -l $REGION gs://${{ secrets.GCP_PROJECT_ID }}-security-reports 2>/dev/null || true
+        
+        # Upload reports with timestamp
+        TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+        gsutil -m cp zap-report.* \
+          gs://${{ secrets.GCP_PROJECT_ID }}-security-reports/$SERVICE_NAME/zap/$TIMESTAMP/
+        
+        echo "ZAP reports uploaded to gs://${{ secrets.GCP_PROJECT_ID }}-security-reports/$SERVICE_NAME/zap/$TIMESTAMP/"
+        
+        # Make the HTML report publicly readable
+        gsutil iam ch allUsers:objectViewer \
+          gs://${{ secrets.GCP_PROJECT_ID }}-security-reports/$SERVICE_NAME/zap/$TIMESTAMP/zap-report.html || true
+        
+        echo "View report: https://storage.googleapis.com/${{ secrets.GCP_PROJECT_ID }}-security-reports/$SERVICE_NAME/zap/$TIMESTAMP/zap-report.html"
+
+    - name: Upload ZAP Reports as Artifacts
+      if: github.ref == 'refs/heads/main'
+      uses: actions/upload-artifact@v4
+      with:
+        name: zap-security-reports
+        path: |
+          zap-report.html
+          zap-report.md
+          zap-report.json
+        retention-days: 30
+
     - name: Prepare next development version
       if: github.ref == 'refs/heads/main'
       run: |
