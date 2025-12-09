@@ -163,9 +163,7 @@ jobs:
         
         echo "ZAP reports uploaded to gs://${{ secrets.GCP_PROJECT_ID }}-security-reports/$SERVICE_NAME/zap/$TIMESTAMP/"
         
-        # Make the HTML report publicly readable
-        gsutil iam ch allUsers:objectViewer \
-          gs://${{ secrets.GCP_PROJECT_ID }}-security-reports/$SERVICE_NAME/zap/$TIMESTAMP/zap-report.html || true
+        # (Removed public access command for ZAP HTML report)
         
         echo "View report: https://storage.googleapis.com/${{ secrets.GCP_PROJECT_ID }}-security-reports/$SERVICE_NAME/zap/$TIMESTAMP/zap-report.html"
 
