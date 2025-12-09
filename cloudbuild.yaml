@@ -168,12 +168,7 @@ steps:
           gs://${PROJECT_ID}-security-reports/${_SERVICE_NAME}/zap/${TIMESTAMP}/
         
         echo "ZAP reports uploaded to gs://${PROJECT_ID}-security-reports/${_SERVICE_NAME}/zap/${TIMESTAMP}/"
-        
-        # Make the HTML report publicly readable (optional)
-        gsutil iam ch allUsers:objectViewer \
-          gs://${PROJECT_ID}-security-reports/${_SERVICE_NAME}/zap/${TIMESTAMP}/zap-report.html || true
-        
-        echo "View report: https://storage.googleapis.com/${PROJECT_ID}-security-reports/${_SERVICE_NAME}/zap/${TIMESTAMP}/zap-report.html"
+        echo "Reports are accessible via IAM-controlled GCS bucket: gs://${PROJECT_ID}-security-reports/${_SERVICE_NAME}/zap/${TIMESTAMP}/"
     waitFor: ['security-scan-zap']
 
 # Substitutions for different environments

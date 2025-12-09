@@ -108,7 +108,7 @@ gs://${PROJECT_ID}-security-reports/recipe-storage-service/zap/${TIMESTAMP}/
 ```
 
 Three report formats are available:
-- **HTML**: `zap-report.html` - Visual report (publicly accessible)
+- **HTML**: `zap-report.html` - Visual report (IAM-controlled access)
 - **Markdown**: `zap-report.md` - Text-based summary
 - **JSON**: `zap-report.json` - Machine-readable format
 
@@ -120,8 +120,8 @@ Check the Cloud Build logs for the direct link to the HTML report, or access via
 # List recent scans
 gsutil ls gs://${PROJECT_ID}-security-reports/recipe-storage-service/zap/
 
-# Download a report by replacing TIMESTAMP with a real value from the `gsutil ls` command above.
-gsutil cp gs://${PROJECT_ID}-security-reports/recipe-storage-service/zap/TIMESTAMP/zap-report.html .
+# Download a specific HTML report (replace YYYYMMDD-HHMMSS with actual timestamp)
+gsutil cp gs://${PROJECT_ID}-security-reports/recipe-storage-service/zap/YYYYMMDD-HHMMSS/zap-report.html .
 ```
 
 ## Scan Configuration
