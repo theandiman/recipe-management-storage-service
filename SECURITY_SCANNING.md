@@ -186,7 +186,7 @@ ZAP scanning is integrated into `cloudbuild.yaml`:
 
 ### Scan Fails or Times Out
 
-- Check if the service is healthy: `curl https://your-service-url/actuator/health`
+- Check if the service is healthy: `curl https://your-service-url`
 - Increase timeout in `cloudbuild.yaml` if needed
 - Review ZAP logs in Cloud Build output
 
