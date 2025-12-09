@@ -176,7 +176,7 @@ steps:
         fi
         
         # Create bucket if it doesn't exist (suppress error if exists)
-        gsutil mb -p ${PROJECT_ID} -l ${_REGION} -b on gs://${PROJECT_ID}-security-reports 2>/dev/null || true
+        gsutil mb -p ${PROJECT_ID} -l ${_REGION} gs://${PROJECT_ID}-security-reports 2>/dev/null || true
         gsutil uniformbucketlevelaccess set on gs://${PROJECT_ID}-security-reports 2>/dev/null || true
         
         # Upload reports with timestamp
