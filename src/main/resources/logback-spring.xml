@@ -36,5 +36,5 @@
     <!-- Set specific log levels for different packages -->
     <logger name="com.recipe.storage" level="DEBUG"/>
     <logger name="org.springframework.web" level="DEBUG"/>
-    <logger name="com.google.cloud.firestore" level="INFO"/>
+    <logger name="com.google.cloud.firestore" level="DEBUG"/>
 </configuration>
