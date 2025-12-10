@@ -3,7 +3,7 @@
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
     
     <springProperty scope="context" name="serviceName" source="spring.application.name" defaultValue="recipe-storage-service"/>
-    <springProperty scope="context" name="serviceVersion" source="spring.application.version" defaultValue="unknown"/>
+    <springProperty scope="context" name="serviceVersion" source="info.build.version" defaultValue="unknown"/>
     
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
