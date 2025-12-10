@@ -11,8 +11,10 @@
             <customFields>{"service":"${serviceName}","version":"${serviceVersion}"}</customFields>
             
             <!-- Include MDC fields for distributed tracing -->
+            <!-- trace_id and span_id are automatically populated by OpenTelemetry Java agent -->
             <includeMdcKeyName>trace_id</includeMdcKeyName>
             <includeMdcKeyName>span_id</includeMdcKeyName>
+            <!-- Application-specific fields populated in code -->
             <includeMdcKeyName>user.id</includeMdcKeyName>
             <includeMdcKeyName>recipe.id</includeMdcKeyName>
             <includeMdcKeyName>request.id</includeMdcKeyName>
