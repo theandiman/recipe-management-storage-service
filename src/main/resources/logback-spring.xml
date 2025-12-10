@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    
+    <springProperty scope="context" name="serviceName" source="spring.application.name" defaultValue="recipe-storage-service"/>
+    <springProperty scope="context" name="serviceVersion" source="spring.application.version" defaultValue="unknown"/>
+    
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <!-- Add service metadata to all logs -->
+            <customFields>{"service":"${serviceName}","version":"${serviceVersion}"}</customFields>
+            
+            <!-- Include MDC fields for distributed tracing -->
+            <includeMdcKeyName>trace_id</includeMdcKeyName>
+            <includeMdcKeyName>span_id</includeMdcKeyName>
+            <includeMdcKeyName>user.id</includeMdcKeyName>
+            <includeMdcKeyName>recipe.id</includeMdcKeyName>
+            <includeMdcKeyName>request.id</includeMdcKeyName>
+            
+            <!-- Enable stack traces in JSON -->
+            <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
+                <maxDepthPerThrowable>30</maxDepthPerThrowable>
+                <maxLength>2048</maxLength>
+                <shortenedClassNameLength>20</shortenedClassNameLength>
+                <exclude>^sun\.reflect\..*\.invoke</exclude>
+                <exclude>^net\.sf\.cglib\.proxy\.MethodProxy\.invoke</exclude>
+                <rootCauseFirst>true</rootCauseFirst>
+            </throwableConverter>
+        </encoder>
+    </appender>
+    
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+    
+    <!-- Set specific log levels for different packages -->
+    <logger name="com.recipemanagement" level="DEBUG"/>
+    <logger name="org.springframework.web" level="DEBUG"/>
+    <logger name="com.google.cloud.firestore" level="INFO"/>
+</configuration>
