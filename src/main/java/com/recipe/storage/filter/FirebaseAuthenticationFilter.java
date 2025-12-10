@@ -9,7 +9,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
@@ -39,75 +41,89 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
       @NonNull HttpServletResponse response,
       @NonNull FilterChain filterChain) throws ServletException, IOException {
 
-    // Skip auth for OPTIONS requests (CORS preflight)
-    if ("OPTIONS".equals(request.getMethod())) {
-      // Set CORS headers for preflight response
-      String origin = request.getHeader("Origin");
-      if (origin != null && ALLOWED_ORIGINS.contains(origin)) {
-        response.setHeader("Access-Control-Allow-Origin", origin);
-        response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-        response.setHeader("Access-Control-Allow-Headers", "*");
-        response.setHeader("Access-Control-Allow-Credentials", "true");
-        response.setHeader("Access-Control-Max-Age", "3600");
-      }
-      response.setStatus(HttpServletResponse.SC_OK);
-      return;
-    }
-
-    String path = request.getRequestURI();
-
-    // Skip auth for health check
-    if (path.startsWith("/actuator/health")) {
-      filterChain.doFilter(request, response);
-      return;
-    }
-
-    // Skip auth for public recipes
-    if (path.equals("/api/recipes/public")) {
-      filterChain.doFilter(request, response);
-      return;
-    }
-
-    // Skip auth for Swagger UI and API docs
-    if (path.startsWith("/v3/api-docs")
-        || path.startsWith("/swagger-ui")) {
-      filterChain.doFilter(request, response);
-      return;
-    }
-
-    if (!authEnabled) {
-      log.warn("Authentication is disabled - using test user");
-      request.setAttribute("userId", "test-user");
-      filterChain.doFilter(request, response);
-      return;
-    }
-
-    String authHeader = request.getHeader("Authorization");
-
-    if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
-      log.error("Missing or invalid Authorization header");
-      response.sendError(HttpServletResponse.SC_UNAUTHORIZED,
-          "Missing or invalid Authorization header");
-      return;
-    }
-
-    String idToken = authHeader.substring(BEARER_PREFIX.length());
+    // Generate unique request ID for distributed tracing
+    String requestId = UUID.randomUUID().toString();
+    MDC.put("request.id", requestId);
 
     try {
-      FirebaseToken decodedToken = FirebaseAuth.getInstance().verifyIdToken(idToken);
-      String uid = decodedToken.getUid();
-      String email = decodedToken.getEmail();
+      // Skip auth for OPTIONS requests (CORS preflight)
+      if ("OPTIONS".equals(request.getMethod())) {
+        // Set CORS headers for preflight response
+        String origin = request.getHeader("Origin");
+        if (origin != null && ALLOWED_ORIGINS.contains(origin)) {
+          response.setHeader("Access-Control-Allow-Origin", origin);
+          response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+          response.setHeader("Access-Control-Allow-Headers", "*");
+          response.setHeader("Access-Control-Allow-Credentials", "true");
+          response.setHeader("Access-Control-Max-Age", "3600");
+        }
+        response.setStatus(HttpServletResponse.SC_OK);
+        return;
+      }
 
-      log.info("Authenticated user: uid={}, email={}", uid, email);
+      String path = request.getRequestURI();
 
-      // Set userId as request attribute for controller access
-      request.setAttribute("userId", uid);
+      // Skip auth for health check
+      if (path.startsWith("/actuator/health")) {
+        filterChain.doFilter(request, response);
+        return;
+      }
 
-      filterChain.doFilter(request, response);
-    } catch (FirebaseAuthException e) {
-      log.error("Failed to verify Firebase token: {}", e.getMessage());
-      response.sendError(HttpServletResponse.SC_UNAUTHORIZED,
-          "Invalid Firebase ID token");
+      // Skip auth for public recipes
+      if (path.equals("/api/recipes/public")) {
+        filterChain.doFilter(request, response);
+        return;
+      }
+
+      // Skip auth for Swagger UI and API docs
+      if (path.startsWith("/v3/api-docs")
+          || path.startsWith("/swagger-ui")) {
+        filterChain.doFilter(request, response);
+        return;
+      }
+
+      if (!authEnabled) {
+        log.warn("Authentication is disabled - using test user");
+        request.setAttribute("userId", "test-user");
+        MDC.put("user.id", "test-user");
+        filterChain.doFilter(request, response);
+        return;
+      }
+
+      String authHeader = request.getHeader("Authorization");
+
+      if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
+        log.error("Missing or invalid Authorization header");
+        response.sendError(HttpServletResponse.SC_UNAUTHORIZED,
+            "Missing or invalid Authorization header");
+        return;
+      }
+
+      String idToken = authHeader.substring(BEARER_PREFIX.length());
+
+      try {
+        FirebaseToken decodedToken = FirebaseAuth.getInstance().verifyIdToken(idToken);
+        String uid = decodedToken.getUid();
+        String email = decodedToken.getEmail();
+
+        log.info("Authenticated user: uid={}, email={}", uid, email);
+
+        // Set userId as request attribute for controller access
+        request.setAttribute("userId", uid);
+        
+        // Populate MDC with user ID for distributed tracing
+        MDC.put("user.id", uid);
+
+        filterChain.doFilter(request, response);
+      } catch (FirebaseAuthException e) {
+        log.error("Failed to verify Firebase token: {}", e.getMessage());
+        response.sendError(HttpServletResponse.SC_UNAUTHORIZED,
+            "Invalid Firebase ID token");
+      }
+    } finally {
+      // Clean up MDC to prevent memory leaks
+      MDC.remove("user.id");
+      MDC.remove("request.id");
     }
   }
 }
