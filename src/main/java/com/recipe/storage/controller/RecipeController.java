@@ -16,6 +16,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -131,9 +132,14 @@ public class RecipeController {
             @Parameter(description = "Recipe ID", required = true) @PathVariable String recipeId,
             @Parameter(hidden = true) @RequestAttribute("userId") String userId) {
 
-        log.info("Fetching recipe {} for user {}", recipeId, userId);
-        RecipeResponse recipe = recipeService.getRecipe(recipeId, userId);
-        return ResponseEntity.ok(recipe);
+        MDC.put("recipe.id", recipeId);
+        try {
+            log.info("Fetching recipe {} for user {}", recipeId, userId);
+            RecipeResponse recipe = recipeService.getRecipe(recipeId, userId);
+            return ResponseEntity.ok(recipe);
+        } finally {
+            MDC.remove("recipe.id");
+        }
     }
 
     /**
@@ -161,9 +167,14 @@ public class RecipeController {
             @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Updated recipe details", required = true, content = @Content(schema = @Schema(implementation = CreateRecipeRequest.class))) @Valid @RequestBody CreateRecipeRequest request,
             @Parameter(hidden = true) @RequestAttribute("userId") String userId) {
 
-        log.info("Updating recipe {} for user {}", recipeId, userId);
-        RecipeResponse response = recipeService.updateRecipe(recipeId, request, userId);
-        return ResponseEntity.ok(response);
+        MDC.put("recipe.id", recipeId);
+        try {
+            log.info("Updating recipe {} for user {}", recipeId, userId);
+            RecipeResponse response = recipeService.updateRecipe(recipeId, request, userId);
+            return ResponseEntity.ok(response);
+        } finally {
+            MDC.remove("recipe.id");
+        }
     }
 
     /**
@@ -188,9 +199,14 @@ public class RecipeController {
             @Parameter(description = "Recipe ID to delete", required = true) @PathVariable String recipeId,
             @Parameter(hidden = true) @RequestAttribute("userId") String userId) {
 
-        log.info("Deleting recipe {} for user {}", recipeId, userId);
-        recipeService.deleteRecipe(recipeId, userId);
-        return ResponseEntity.noContent().build();
+        MDC.put("recipe.id", recipeId);
+        try {
+            log.info("Deleting recipe {} for user {}", recipeId, userId);
+            recipeService.deleteRecipe(recipeId, userId);
+            return ResponseEntity.noContent().build();
+        } finally {
+            MDC.remove("recipe.id");
+        }
     }
 
     /**
@@ -216,8 +232,13 @@ public class RecipeController {
             @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "New sharing status", required = true) @Valid @RequestBody UpdateSharingRequest request,
             @Parameter(hidden = true) @RequestAttribute("userId") String userId) {
 
-        log.info("Updating sharing status for recipe {} to {} for user {}", recipeId, request.getIsPublic(), userId);
-        RecipeResponse response = recipeService.updateRecipeSharing(recipeId, request.getIsPublic(), userId);
-        return ResponseEntity.ok(response);
+        MDC.put("recipe.id", recipeId);
+        try {
+            log.info("Updating sharing status for recipe {} to {} for user {}", recipeId, request.getIsPublic(), userId);
+            RecipeResponse response = recipeService.updateRecipeSharing(recipeId, request.getIsPublic(), userId);
+            return ResponseEntity.ok(response);
+        } finally {
+            MDC.remove("recipe.id");
+        }
     }
 }
