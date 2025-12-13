@@ -14,7 +14,7 @@
 
     <groupId>com.recipe</groupId>
     <artifactId>recipe-storage-service</artifactId>
-    <version>0.0.21-SNAPSHOT</version>
+    <version>0.0.23-SNAPSHOT</version>
     <name>recipe-storage-service</name>
     <description>Recipe storage service using Spring Boot and Firestore</description>
 
@@ -92,7 +92,7 @@
         <dependency>
             <groupId>net.logstash.logback</groupId>
             <artifactId>logstash-logback-encoder</artifactId>
-            <version>7.4</version>
+            <version>9.0</version>
         </dependency>
 
         <!-- Test dependencies -->
