@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "@google-cloud/firestore": "^8.0.0"
+  }
+}
