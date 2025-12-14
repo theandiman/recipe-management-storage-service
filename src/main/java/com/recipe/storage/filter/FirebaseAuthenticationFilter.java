@@ -52,7 +52,8 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
         String origin = request.getHeader("Origin");
         if (origin != null && ALLOWED_ORIGINS.contains(origin)) {
           response.setHeader("Access-Control-Allow-Origin", origin);
-          response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+          response.setHeader("Access-Control-Allow-Methods",
+              "GET, POST, PUT, PATCH, DELETE, OPTIONS");
           response.setHeader("Access-Control-Allow-Headers", "*");
           response.setHeader("Access-Control-Allow-Credentials", "true");
           response.setHeader("Access-Control-Max-Age", "3600");
