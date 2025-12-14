@@ -56,7 +56,8 @@ class FirebaseAuthenticationFilterTest {
 
         // Assert
         verify(response).setHeader("Access-Control-Allow-Origin", "http://localhost:5173");
-        verify(response).setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+        verify(response).setHeader("Access-Control-Allow-Methods",
+            "GET, POST, PUT, PATCH, DELETE, OPTIONS");
         verify(response).setHeader("Access-Control-Allow-Headers", "*");
         verify(response).setHeader("Access-Control-Allow-Credentials", "true");
         verify(response).setHeader("Access-Control-Max-Age", "3600");
