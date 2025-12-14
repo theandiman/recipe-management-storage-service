@@ -413,6 +413,9 @@ public class RecipeService {
           .updatedAt(Instant.now())
           .build();
 
+      log.info("Updating recipe {} - current isPublic: {}, new isPublic: {}, updatedRecipe.isPublic(): {}",
+          recipeId, existingRecipe.isPublic(), isPublic, updatedRecipe.isPublic());
+
       ApiFuture<WriteResult> writeFuture = docRef.update("isPublic",
           updatedRecipe.isPublic(), "updatedAt", updatedRecipe.getUpdatedAt());
       writeFuture.get();
