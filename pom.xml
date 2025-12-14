@@ -64,7 +64,7 @@
         <dependency>
             <groupId>com.recipe</groupId>
             <artifactId>recipe-management-shared</artifactId>
-            <version>1.0.17</version>
+            <version>1.0.18</version>
         </dependency>
 
 
