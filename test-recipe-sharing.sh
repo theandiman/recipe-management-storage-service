@@ -25,7 +25,22 @@ echo "=========================================="
 echo "Recipe Sharing Integration Test"
 echo "=========================================="
 echo "Service URL: $SERVICE_URL"
-echo ""
+
+# This RECIPE_ID variable will be populated by the test
+RECIPE_ID=""
+
+# Function to clean up the test recipe.
+# The trap ensures this runs on any script exit.
+cleanup() {
+  if [ -n "$RECIPE_ID" ]; then
+    echo ""
+    echo -e "${YELLOW}Cleaning up test recipe $RECIPE_ID...${NC}"
+    # Attempt to delete the recipe. `|| true` prevents the script from failing if cleanup fails.
+    curl -s -X DELETE "$SERVICE_URL/api/recipes/$RECIPE_ID" \
+      -H "Authorization: Bearer $FIREBASE_TOKEN" -o /dev/null || true
+  fi
+}
+trap cleanup EXIT
 
 # Test counter
 TESTS_PASSED=0
