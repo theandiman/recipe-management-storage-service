@@ -14,12 +14,10 @@ NC='\033[0m' # No Color
 
 # Get service URL and Firebase token from command line
 SERVICE_URL="${1:-http://localhost:8081}"
-FIREBASE_TOKEN="${2}"
 
 if [ -z "$FIREBASE_TOKEN" ]; then
-    echo -e "${RED}Error: Firebase token is required${NC}"
-    echo "Usage: $0 [SERVICE_URL] FIREBASE_TOKEN"
-    echo "Example: $0 http://localhost:8081 <your-firebase-token>"
+    echo -e "${RED}Error: FIREBASE_TOKEN environment variable is not set.${NC}" >&2
+    echo "Usage: export FIREBASE_TOKEN=<your-token> && $0 [SERVICE_URL]" >&2
     exit 1
 fi
 
