@@ -73,7 +73,7 @@ public class RecipeService {
           .source(request.getSource())
           .tags(request.getTags())
           .dietaryRestrictions(request.getDietaryRestrictions())
-          .isPublic(request.isPublic())
+          .publicRecipe(request.isPublic())
           .createdAt(now)
           .updatedAt(now)
           .build();
@@ -147,7 +147,7 @@ public class RecipeService {
           .source(request.getSource())
           .tags(request.getTags())
           .dietaryRestrictions(request.getDietaryRestrictions())
-          .isPublic(request.isPublic())
+          .publicRecipe(request.isPublic())
           .updatedAt(now)
           .build();
 
@@ -188,7 +188,7 @@ public class RecipeService {
         .source(request.getSource())
         .tags(request.getTags())
         .dietaryRestrictions(request.getDietaryRestrictions())
-        .isPublic(request.isPublic())
+        .publicRecipe(request.isPublic())
         .createdAt(now)
         .updatedAt(now)
         .build();
@@ -305,7 +305,7 @@ public class RecipeService {
       }
 
       // Verify user has access (owner or public)
-      if (!userId.equals(recipe.getUserId()) && !recipe.isPublic()) {
+      if (!userId.equals(recipe.getUserId()) && !recipe.isPublicRecipe()) {
         log.warn("User {} attempted to access private recipe {} owned by {}",
             userId, recipeId, recipe.getUserId());
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
@@ -409,15 +409,15 @@ public class RecipeService {
 
       // Update only the isPublic field and updatedAt timestamp
       Recipe updatedRecipe = existingRecipe.toBuilder()
-          .isPublic(isPublic)
+          .publicRecipe(isPublic)
           .updatedAt(Instant.now())
           .build();
 
       log.info("Updating recipe {} - current: {}, new: {}, actual: {}",
-          recipeId, existingRecipe.isPublic(), isPublic, updatedRecipe.isPublic());
+          recipeId, existingRecipe.isPublicRecipe(), isPublic, updatedRecipe.isPublicRecipe());
 
       ApiFuture<WriteResult> writeFuture = docRef.update("isPublic",
-          updatedRecipe.isPublic(), "updatedAt", updatedRecipe.getUpdatedAt());
+          updatedRecipe.isPublicRecipe(), "updatedAt", updatedRecipe.getUpdatedAt());
       writeFuture.get();
 
       log.info("Updated sharing status for recipe {} to {} by user {}",
