@@ -261,7 +261,7 @@ class RecipeServiceTest {
                 .id(recipeId)
                 .userId(userId)
                 .recipeName("Test Recipe")
-                .isPublic(false)
+                .publicRecipe(false)
                 .build();
         when(documentSnapshot.toObject(Recipe.class)).thenReturn(existingRecipe);
 
