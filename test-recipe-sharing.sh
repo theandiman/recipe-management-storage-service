@@ -3,7 +3,13 @@
 # Integration test for recipe sharing functionality
 # Tests: Create recipe -> Set to public -> Verify -> Set to private -> Delete
 
-set -e
+set -eo pipefail
+
+# Check for dependencies
+if ! command -v jq &> /dev/null; then
+    echo -e "${RED}Error: jq is not installed. Please install it to run this script.${NC}" >&2
+    exit 1
+fi
 
 # Colors for output
 RED='\033[0;31m'
