@@ -474,7 +474,7 @@ public class RecipeService {
         .updatedAt(recipe.getUpdatedAt())
         .tags(recipe.getTags())
         .dietaryRestrictions(recipe.getDietaryRestrictions())
-        .isPublic(recipe.isPublic())
+        .isPublic(recipe.isPublicRecipe())
         .build();
   }
 
