@@ -280,7 +280,8 @@ public class RecipeService {
   }
 
   /**
-   * Get a specific public recipe by ID (unauthenticated).
+   * Get a public recipe by ID without authentication.
+   * Returns 404 if the recipe does not exist or is not public.
    *
    * @param recipeId The recipe ID
    * @return The recipe if it exists and is public
@@ -309,8 +310,9 @@ public class RecipeService {
             "Failed to load recipe");
       }
 
+      // Return 404 for private recipes to avoid leaking existence
       if (!recipe.isPublicRecipe()) {
-        log.warn("Recipe {} is not public", recipeId);
+        log.warn("Unauthenticated access attempt to private recipe: {}", recipeId);
         throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
       }
 
@@ -318,7 +320,11 @@ public class RecipeService {
       RecipeResponse response = mapToResponse(recipe);
       response.setAuthorDisplayName(resolveDisplayName(recipe.getUserId()));
       return response;
-    } catch (InterruptedException | ExecutionException e) {
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      log.error("Interrupted while fetching public recipe from Firestore", e);
+      throw new RuntimeException("Failed to fetch recipe", e);
+    } catch (ExecutionException e) {
       log.error("Error fetching public recipe from Firestore", e);
       throw new RuntimeException("Failed to fetch recipe", e);
     }
