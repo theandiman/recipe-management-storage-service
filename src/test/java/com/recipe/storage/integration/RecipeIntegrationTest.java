@@ -90,7 +90,6 @@ class RecipeIntegrationTest {
         assertThat(response.getBody().getTitle()).isEqualTo("Test Recipe 1");
         assertThat(response.getBody().getUserId()).isEqualTo(TEST_USER_ID);
         assertThat(response.getBody().isPublic()).isFalse();
-        assertThat(response.getBody().isPublic()).isFalse();
 
         recipeId = response.getBody().getId();
     }
