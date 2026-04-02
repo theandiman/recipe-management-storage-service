@@ -123,6 +123,23 @@ class FirebaseAuthenticationFilterTest {
     }
 
     @Test
+    void doFilterInternal_SinglePublicRecipePath_PostMethod_DoesNotBypassAuth() throws ServletException, IOException {
+        // Arrange — POST to the public path must NOT bypass auth
+        ReflectionTestUtils.setField(filter, "authEnabled", true);
+        when(request.getMethod()).thenReturn("POST");
+        when(request.getRequestURI()).thenReturn("/api/recipes/abc123/public");
+        when(request.getHeader("Authorization")).thenReturn(null);
+
+        // Act
+        filter.doFilterInternal(request, response, filterChain);
+
+        // Assert — filter should reject the request with 401
+        verify(response).sendError(HttpServletResponse.SC_UNAUTHORIZED,
+                "Missing or invalid Authorization header");
+        verifyNoInteractions(filterChain);
+    }
+
+    @Test
     void doFilterInternal_SwaggerPath_BypassesAuth() throws ServletException, IOException {
         // Arrange
         when(request.getMethod()).thenReturn("GET");
