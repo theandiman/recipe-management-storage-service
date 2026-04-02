@@ -1,6 +1,7 @@
 package com.recipe.storage.controller;
 
 import com.recipe.storage.dto.CreateRecipeRequest;
+import com.recipe.storage.dto.PagedRecipeResponse;
 import com.recipe.storage.dto.RecipeResponse;
 import com.recipe.storage.dto.UpdateSharingRequest;
 import com.recipe.storage.service.RecipeService;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -92,22 +94,28 @@ public class RecipeController {
     }
 
     /**
-     * Get all public recipes.
+     * Get public recipes with optional pagination.
      * Does NOT require authentication.
      *
-     * @return List of public recipes
+     * @param page Page index (0-based, default 0)
+     * @param size Number of recipes per page (default 20, max 100)
+     * @return Paginated public recipes
      */
     @GetMapping("/public")
-    @Operation(summary = "Get all public recipes", description = "Retrieves all recipes that have been marked as public. "
-            + "No authentication required.")
+    @Operation(summary = "Get public recipes", description = "Retrieves recipes that have been marked as public, "
+            + "ordered by creation date (newest first). Supports optional pagination via 'page' and 'size' query "
+            + "parameters. No authentication required.")
     @io.swagger.v3.oas.annotations.security.SecurityRequirements({})
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Public recipes retrieved successfully", content = @Content(schema = @Schema(implementation = RecipeResponse.class)))
+            @ApiResponse(responseCode = "200", description = "Public recipes retrieved successfully", content = @Content(schema = @Schema(implementation = PagedRecipeResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid pagination parameters (size exceeds 100)", content = @Content)
     })
-    public ResponseEntity<List<RecipeResponse>> getPublicRecipes() {
-        log.info("Fetching public recipes");
-        List<RecipeResponse> recipes = recipeService.getPublicRecipes();
-        return ResponseEntity.ok(recipes);
+    public ResponseEntity<PagedRecipeResponse> getPublicRecipes(
+            @Parameter(description = "Page index (0-based, default: 0)") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Page size (default: 20, max: 100)") @RequestParam(defaultValue = "20") int size) {
+        log.info("Fetching public recipes (page={}, size={})", page, size);
+        PagedRecipeResponse response = recipeService.getPublicRecipes(page, size);
+        return ResponseEntity.ok(response);
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.recipe.storage.service;
 
 import com.google.api.core.ApiFuture;
+import com.google.cloud.firestore.AggregateQuerySnapshot;
 import com.google.cloud.firestore.DocumentReference;
 import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.cloud.firestore.Firestore;
@@ -10,6 +11,7 @@ import com.google.cloud.firestore.WriteResult;
 import com.recipe.shared.model.NutritionalInfo;
 import com.recipe.shared.model.Recipe;
 import com.recipe.storage.dto.CreateRecipeRequest;
+import com.recipe.storage.dto.PagedRecipeResponse;
 import com.recipe.storage.dto.RecipeResponse;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -237,22 +239,40 @@ public class RecipeService {
   }
 
   /**
-   * Get all public recipes.
+   * Get public recipes with pagination.
    *
-   * @return List of public recipes
+   * @param page Page index (0-based, default 0)
+   * @param size Number of recipes per page (max 100)
+   * @return Paginated list of public recipes
    */
-  public List<RecipeResponse> getPublicRecipes() {
+  public PagedRecipeResponse getPublicRecipes(int page, int size) {
+    if (size > 100) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Page size must not exceed 100");
+    }
+
     if (firestore == null) {
-      log.warn("Firestore not configured - returning empty list");
-      return new ArrayList<>();
+      log.warn("Firestore not configured - returning empty paged response");
+      return PagedRecipeResponse.builder()
+          .recipes(new ArrayList<>())
+          .page(page)
+          .size(size)
+          .totalCount(0)
+          .build();
     }
 
     try {
-      // TODO: Add composite index on isPublic + createdAt for better sorting
-      Query query = firestore.collection(recipesCollection)
+      Query baseQuery = firestore.collection(recipesCollection)
           .whereEqualTo("isPublic", true);
 
-      ApiFuture<QuerySnapshot> future = query.get();
+      AggregateQuerySnapshot countSnapshot = baseQuery.count().get().get();
+      long totalCount = countSnapshot.getCount();
+
+      Query pagedQuery = baseQuery
+          .orderBy("createdAt", Query.Direction.DESCENDING)
+          .offset(page * size)
+          .limit(size);
+
+      ApiFuture<QuerySnapshot> future = pagedQuery.get();
       QuerySnapshot querySnapshot = future.get();
 
       List<RecipeResponse> recipes = new ArrayList<>();
@@ -261,11 +281,13 @@ public class RecipeService {
         recipes.add(mapToResponse(recipe));
       });
 
-      // Sort in-memory by createdAt (newest first)
-      recipes.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
-
-      log.info("Found {} public recipes", recipes.size());
-      return recipes;
+      log.info("Found {} public recipes (page={}, size={}, total={})", recipes.size(), page, size, totalCount);
+      return PagedRecipeResponse.builder()
+          .recipes(recipes)
+          .page(page)
+          .size(size)
+          .totalCount(totalCount)
+          .build();
     } catch (InterruptedException | ExecutionException e) {
       log.error("Error fetching public recipes from Firestore", e);
       throw new RuntimeException("Failed to fetch public recipes", e);

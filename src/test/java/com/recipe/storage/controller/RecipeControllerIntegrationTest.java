@@ -98,7 +98,28 @@ class RecipeControllerIntegrationTest {
     void getPublicRecipes_Success() throws Exception {
         mockMvc.perform(get("/api/recipes/public"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray());
+                .andExpect(jsonPath("$.recipes").isArray())
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.totalCount").value(0));
+    }
+
+    @Test
+    void getPublicRecipes_WithPaginationParams_Success() throws Exception {
+        mockMvc.perform(get("/api/recipes/public")
+                .param("page", "1")
+                .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recipes").isArray())
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.size").value(10));
+    }
+
+    @Test
+    void getPublicRecipes_SizeExceedsMax_ReturnsBadRequest() throws Exception {
+        mockMvc.perform(get("/api/recipes/public")
+                .param("size", "101"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

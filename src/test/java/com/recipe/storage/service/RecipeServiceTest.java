@@ -6,6 +6,7 @@ import com.google.cloud.firestore.DocumentReference;
 import com.google.cloud.firestore.Firestore;
 import com.google.cloud.firestore.WriteResult;
 import com.recipe.storage.dto.CreateRecipeRequest;
+import com.recipe.storage.dto.PagedRecipeResponse;
 import com.recipe.storage.dto.RecipeResponse;
 import com.recipe.shared.model.Recipe;
 import org.junit.jupiter.api.BeforeEach;
@@ -352,6 +353,64 @@ class RecipeServiceTest {
                 org.springframework.web.server.ResponseStatusException.class,
                 () -> serviceWithoutFirestore.updateRecipeSharing(recipeId, isPublic, userId));
         assertEquals(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE, exception.getStatusCode());
+    }
+
+    @Test
+    void getPublicRecipes_NoFirestore_ReturnsEmptyPagedResponse() {
+        // Arrange
+        RecipeService serviceWithoutFirestore = new RecipeService();
+        ReflectionTestUtils.setField(serviceWithoutFirestore, "recipesCollection", "recipes");
+
+        // Act
+        PagedRecipeResponse response = serviceWithoutFirestore.getPublicRecipes(0, 20);
+
+        // Assert
+        assertNotNull(response);
+        assertNotNull(response.getRecipes());
+        assertTrue(response.getRecipes().isEmpty());
+        assertEquals(0, response.getPage());
+        assertEquals(20, response.getSize());
+        assertEquals(0, response.getTotalCount());
+    }
+
+    @Test
+    void getPublicRecipes_SizeExceedsMax_ThrowsBadRequest() {
+        // Arrange
+        RecipeService serviceWithoutFirestore = new RecipeService();
+        ReflectionTestUtils.setField(serviceWithoutFirestore, "recipesCollection", "recipes");
+
+        // Act & Assert
+        org.springframework.web.server.ResponseStatusException exception = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> serviceWithoutFirestore.getPublicRecipes(0, 101));
+        assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, exception.getStatusCode());
+    }
+
+    @Test
+    void getPublicRecipes_SizeAtMax_DoesNotThrow() {
+        // Arrange
+        RecipeService serviceWithoutFirestore = new RecipeService();
+        ReflectionTestUtils.setField(serviceWithoutFirestore, "recipesCollection", "recipes");
+
+        // Act & Assert - size == 100 should not throw
+        PagedRecipeResponse response = serviceWithoutFirestore.getPublicRecipes(0, 100);
+        assertNotNull(response);
+        assertEquals(100, response.getSize());
+    }
+
+    @Test
+    void getPublicRecipes_NthPage_ReflectsPageParam() {
+        // Arrange
+        RecipeService serviceWithoutFirestore = new RecipeService();
+        ReflectionTestUtils.setField(serviceWithoutFirestore, "recipesCollection", "recipes");
+
+        // Act
+        PagedRecipeResponse response = serviceWithoutFirestore.getPublicRecipes(3, 10);
+
+        // Assert
+        assertNotNull(response);
+        assertEquals(3, response.getPage());
+        assertEquals(10, response.getSize());
     }
 
     private CreateRecipeRequest createValidRequest() {
