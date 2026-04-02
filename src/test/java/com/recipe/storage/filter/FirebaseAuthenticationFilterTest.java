@@ -109,6 +109,20 @@ class FirebaseAuthenticationFilterTest {
     }
 
     @Test
+    void doFilterInternal_SinglePublicRecipePath_BypassesAuth() throws ServletException, IOException {
+        // Arrange
+        when(request.getMethod()).thenReturn("GET");
+        when(request.getRequestURI()).thenReturn("/api/recipes/abc123/public");
+
+        // Act
+        filter.doFilterInternal(request, response, filterChain);
+
+        // Assert
+        verify(filterChain).doFilter(request, response);
+        verify(request, never()).setAttribute(anyString(), anyString());
+    }
+
+    @Test
     void doFilterInternal_SwaggerPath_BypassesAuth() throws ServletException, IOException {
         // Arrange
         when(request.getMethod()).thenReturn("GET");

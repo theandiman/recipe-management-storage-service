@@ -60,4 +60,18 @@ class RecipeSharingIntegrationTest {
                 // Expect empty list because Firestore is not mocked
                 // .andExpect(jsonPath("$").isArray());
         }
+
+        @Test
+        void getPublicRecipe_NoFirestore_ReturnsNotFound() throws Exception {
+                mockMvc.perform(get("/api/recipes/some-recipe-id/public"))
+                                .andExpect(status().isNotFound());
+        }
+
+        @Test
+        void getPublicRecipe_NoAuthHeader_IsAllowed() throws Exception {
+                // Endpoint should be reachable without Authorization header.
+                // Without Firestore the service returns 404 (not 401/403).
+                mockMvc.perform(get("/api/recipes/some-recipe-id/public"))
+                                .andExpect(status().isNotFound());
+        }
 }

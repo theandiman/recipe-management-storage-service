@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -108,6 +109,34 @@ public class RecipeController {
         log.info("Fetching public recipes");
         List<RecipeResponse> recipes = recipeService.getPublicRecipes();
         return ResponseEntity.ok(recipes);
+    }
+
+    /**
+     * Get a public recipe by ID without authentication.
+     * Returns 404 if recipe does not exist or is not public.
+     *
+     * @param recipeId The recipe ID
+     * @return The recipe if it exists and is public
+     */
+    @GetMapping("/{recipeId}/public")
+    @SecurityRequirements({})
+    @Operation(summary = "Get a single public recipe", description = "Retrieves a recipe by its ID without authentication. "
+            + "Returns 404 if the recipe does not exist or is not public.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Public recipe retrieved successfully", content = @Content(schema = @Schema(implementation = RecipeResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Recipe not found or is not public", content = @Content)
+    })
+    public ResponseEntity<RecipeResponse> getPublicRecipe(
+            @Parameter(description = "Recipe ID", required = true) @PathVariable String recipeId) {
+
+        MDC.put("recipe.id", recipeId);
+        try {
+            log.info("Fetching public recipe {}", recipeId);
+            RecipeResponse recipe = recipeService.getPublicRecipe(recipeId);
+            return ResponseEntity.ok(recipe);
+        } finally {
+            MDC.remove("recipe.id");
+        }
     }
 
     /**
