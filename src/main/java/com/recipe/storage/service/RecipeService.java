@@ -380,7 +380,7 @@ public class RecipeService {
       ApiFuture<DocumentSnapshot> future = docRef.get();
       DocumentSnapshot document = future.get();
 
-      if (!document.exists()) {
+      if (document == null || !document.exists()) {
         log.warn("Public recipe not found: {}", recipeId);
         throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
       }
