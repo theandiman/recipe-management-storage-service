@@ -49,7 +49,7 @@ class PostDeploymentIntegrationTest {
     private ObjectMapper objectMapper;
 
     private static String createdRecipeId;
-    // Note: RecipeService uses "test-user" as default when Firestore is not available
+    // Note: This test uses "test-user" as the TEST_USER_ID when interacting with the API
     private static final String TEST_USER_ID = "test-user";
 
     // ========================================
