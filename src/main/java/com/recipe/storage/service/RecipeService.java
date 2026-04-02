@@ -310,7 +310,11 @@ public class RecipeService {
 
       log.info("Retrieved public recipe {}", recipeId);
       return mapToResponse(recipe);
-    } catch (InterruptedException | ExecutionException e) {
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      log.error("Interrupted while fetching public recipe from Firestore", e);
+      throw new RuntimeException("Failed to fetch recipe", e);
+    } catch (ExecutionException e) {
       log.error("Error fetching public recipe from Firestore", e);
       throw new RuntimeException("Failed to fetch recipe", e);
     }
