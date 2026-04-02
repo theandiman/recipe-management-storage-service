@@ -76,6 +76,14 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
         return;
       }
 
+      // Skip auth for single public recipe endpoint (read-only methods only)
+      String method = request.getMethod();
+      if (path.matches("/api/recipes/[^/]+/public")
+          && ("GET".equals(method) || "HEAD".equals(method))) {
+        filterChain.doFilter(request, response);
+        return;
+      }
+
       // Skip auth for Swagger UI and API docs
       if (path.startsWith("/v3/api-docs")
           || path.startsWith("/swagger-ui")) {

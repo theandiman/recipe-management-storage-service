@@ -295,6 +295,54 @@ public class RecipeService {
   }
 
   /**
+   * Get a public recipe by ID without authentication.
+   * Returns 404 if the recipe does not exist or is not public.
+   *
+   * @param recipeId The recipe ID
+   * @return The recipe if it exists and is public
+   * @throws ResponseStatusException 404 if not found or not public
+   */
+  public RecipeResponse getPublicRecipe(String recipeId) {
+    if (firestore == null) {
+      log.warn("Firestore not configured - cannot fetch recipe");
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
+    }
+
+    try {
+      DocumentReference docRef = firestore.collection(recipesCollection).document(recipeId);
+      ApiFuture<DocumentSnapshot> future = docRef.get();
+      DocumentSnapshot document = future.get();
+
+      if (!document.exists()) {
+        log.warn("Public recipe not found: {}", recipeId);
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
+      }
+
+      Recipe recipe = document.toObject(Recipe.class);
+      if (recipe == null) {
+        log.error("Failed to deserialize recipe: {}", recipeId);
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
+      }
+
+      // Return 404 for private recipes to avoid leaking existence
+      if (!recipe.isPublicRecipe()) {
+        log.warn("Unauthenticated access attempt to private recipe: {}", recipeId);
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
+      }
+
+      log.info("Retrieved public recipe {}", recipeId);
+      return mapToResponse(recipe);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      log.error("Interrupted while fetching public recipe from Firestore", e);
+      throw new RuntimeException("Failed to fetch recipe", e);
+    } catch (ExecutionException e) {
+      log.error("Error fetching public recipe from Firestore", e);
+      throw new RuntimeException("Failed to fetch recipe", e);
+    }
+  }
+
+  /**
    * Get a specific recipe by ID.
    *
    * @param recipeId The recipe ID
