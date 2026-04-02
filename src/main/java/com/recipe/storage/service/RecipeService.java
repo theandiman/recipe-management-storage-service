@@ -289,7 +289,7 @@ public class RecipeService {
   public RecipeResponse getPublicRecipe(String recipeId) {
     if (firestore == null) {
       log.warn("Firestore not configured - cannot fetch recipe");
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
+      throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Recipe service unavailable");
     }
 
     try {
