@@ -220,7 +220,6 @@ class RecipeIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().isPublic()).isFalse();
-
     }
 
     @Test
@@ -238,7 +237,6 @@ class RecipeIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().isPublic()).isFalse();
-
     }
 
     @Test
