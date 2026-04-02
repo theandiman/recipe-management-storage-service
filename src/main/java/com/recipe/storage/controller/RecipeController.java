@@ -111,6 +111,31 @@ public class RecipeController {
     }
 
     /**
+     * Get a specific public recipe by ID.
+     * Does NOT require authentication.
+     *
+     * @param recipeId The recipe ID
+     * @return The recipe if it is public
+     */
+    @GetMapping("/{recipeId}/public")
+    @Operation(summary = "Get a specific public recipe by ID",
+            description = "Retrieves a public recipe by its ID. No authentication required.")
+    @io.swagger.v3.oas.annotations.security.SecurityRequirements({})
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Recipe retrieved successfully",
+                    content = @Content(schema = @Schema(implementation = RecipeResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Recipe not found or not public",
+                    content = @Content)
+    })
+    public ResponseEntity<RecipeResponse> getPublicRecipe(
+            @Parameter(description = "Recipe ID", required = true) @PathVariable String recipeId) {
+
+        log.info("Fetching public recipe {}", recipeId);
+        RecipeResponse recipe = recipeService.getPublicRecipe(recipeId);
+        return ResponseEntity.ok(recipe);
+    }
+
+    /**
      * Get a specific recipe by ID.
      * Requires Firebase authentication and user must own the recipe.
      *

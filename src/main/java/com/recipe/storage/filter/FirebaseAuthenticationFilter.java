@@ -76,6 +76,12 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
         return;
       }
 
+      // Skip auth for single public recipe by ID
+      if (path.matches("/api/recipes/[^/]+/public")) {
+        filterChain.doFilter(request, response);
+        return;
+      }
+
       // Skip auth for Swagger UI and API docs
       if (path.startsWith("/v3/api-docs")
           || path.startsWith("/swagger-ui")) {

@@ -7,6 +7,8 @@ import com.google.cloud.firestore.Firestore;
 import com.google.cloud.firestore.Query;
 import com.google.cloud.firestore.QuerySnapshot;
 import com.google.cloud.firestore.WriteResult;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthException;
 import com.recipe.shared.model.NutritionalInfo;
 import com.recipe.shared.model.Recipe;
 import com.recipe.storage.dto.CreateRecipeRequest;
@@ -33,6 +35,9 @@ public class RecipeService {
 
   @Autowired(required = false)
   private Firestore firestore;
+
+  @Autowired(required = false)
+  private FirebaseAuth firebaseAuth;
 
   @Value("${firestore.collection.recipes}")
   private String recipesCollection;
@@ -258,7 +263,9 @@ public class RecipeService {
       List<RecipeResponse> recipes = new ArrayList<>();
       querySnapshot.getDocuments().forEach(doc -> {
         Recipe recipe = doc.toObject(Recipe.class);
-        recipes.add(mapToResponse(recipe));
+        RecipeResponse response = mapToResponse(recipe);
+        response.setAuthorDisplayName(resolveDisplayName(recipe.getUserId()));
+        recipes.add(response);
       });
 
       // Sort in-memory by createdAt (newest first)
@@ -269,6 +276,51 @@ public class RecipeService {
     } catch (InterruptedException | ExecutionException e) {
       log.error("Error fetching public recipes from Firestore", e);
       throw new RuntimeException("Failed to fetch public recipes", e);
+    }
+  }
+
+  /**
+   * Get a specific public recipe by ID (unauthenticated).
+   *
+   * @param recipeId The recipe ID
+   * @return The recipe if it exists and is public
+   * @throws ResponseStatusException 404 if not found or not public
+   */
+  public RecipeResponse getPublicRecipe(String recipeId) {
+    if (firestore == null) {
+      log.warn("Firestore not configured - cannot fetch recipe");
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
+    }
+
+    try {
+      DocumentReference docRef = firestore.collection(recipesCollection).document(recipeId);
+      ApiFuture<DocumentSnapshot> future = docRef.get();
+      DocumentSnapshot document = future.get();
+
+      if (!document.exists()) {
+        log.warn("Public recipe not found: {}", recipeId);
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
+      }
+
+      Recipe recipe = document.toObject(Recipe.class);
+      if (recipe == null) {
+        log.error("Failed to deserialize recipe: {}", recipeId);
+        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+            "Failed to load recipe");
+      }
+
+      if (!recipe.isPublicRecipe()) {
+        log.warn("Recipe {} is not public", recipeId);
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
+      }
+
+      log.info("Retrieved public recipe {}", recipeId);
+      RecipeResponse response = mapToResponse(recipe);
+      response.setAuthorDisplayName(resolveDisplayName(recipe.getUserId()));
+      return response;
+    } catch (InterruptedException | ExecutionException e) {
+      log.error("Error fetching public recipe from Firestore", e);
+      throw new RuntimeException("Failed to fetch recipe", e);
     }
   }
 
@@ -476,6 +528,24 @@ public class RecipeService {
         .dietaryRestrictions(recipe.getDietaryRestrictions())
         .isPublic(recipe.isPublicRecipe())
         .build();
+  }
+
+  /**
+   * Resolve a Firebase user's display name, returning null on failure.
+   *
+   * @param userId The Firebase user ID
+   * @return The display name, or null if lookup fails or auth is unavailable
+   */
+  private String resolveDisplayName(String userId) {
+    if (firebaseAuth == null || userId == null) {
+      return null;
+    }
+    try {
+      return firebaseAuth.getUser(userId).getDisplayName();
+    } catch (FirebaseAuthException e) {
+      log.warn("Failed to resolve display name for user {}: {}", userId, e.getMessage());
+      return null;
+    }
   }
 
   /**
