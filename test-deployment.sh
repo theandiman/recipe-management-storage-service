@@ -129,7 +129,7 @@ test_endpoint_with_response "/v3/api-docs" "200" "OpenAPI specification endpoint
 echo -n "Testing: Protected endpoint without auth... "
 status_code=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 10 "$SERVICE_URL/api/recipes")
 if [ "$status_code" = "401" ] || [ "$status_code" = "403" ] || [ "$status_code" = "200" ]; then
-    # Note: Currently auth is checking is disabled in some configs, so 200 might be returned. 
+    # Note: Currently auth checking is disabled in some configs, so 200 might be returned. 
     # Adjusting expectation to pass if service is responsive.
     echo -e "${GREEN}✓ PASSED${NC} (HTTP $status_code)"
     ((TESTS_PASSED++))
