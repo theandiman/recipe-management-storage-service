@@ -387,6 +387,45 @@ class RecipeServiceTest {
     }
 
     @Test
+    void getPublicRecipes_NegativePage_ThrowsBadRequest() {
+        // Arrange
+        RecipeService serviceWithoutFirestore = new RecipeService();
+        ReflectionTestUtils.setField(serviceWithoutFirestore, "recipesCollection", "recipes");
+
+        // Act & Assert
+        org.springframework.web.server.ResponseStatusException exception = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> serviceWithoutFirestore.getPublicRecipes(-1, 20));
+        assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, exception.getStatusCode());
+    }
+
+    @Test
+    void getPublicRecipes_ZeroSize_ThrowsBadRequest() {
+        // Arrange
+        RecipeService serviceWithoutFirestore = new RecipeService();
+        ReflectionTestUtils.setField(serviceWithoutFirestore, "recipesCollection", "recipes");
+
+        // Act & Assert
+        org.springframework.web.server.ResponseStatusException exception = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> serviceWithoutFirestore.getPublicRecipes(0, 0));
+        assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, exception.getStatusCode());
+    }
+
+    @Test
+    void getPublicRecipes_NegativeSize_ThrowsBadRequest() {
+        // Arrange
+        RecipeService serviceWithoutFirestore = new RecipeService();
+        ReflectionTestUtils.setField(serviceWithoutFirestore, "recipesCollection", "recipes");
+
+        // Act & Assert
+        org.springframework.web.server.ResponseStatusException exception = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> serviceWithoutFirestore.getPublicRecipes(0, -5));
+        assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, exception.getStatusCode());
+    }
+
+    @Test
     void getPublicRecipes_SizeAtMax_DoesNotThrow() {
         // Arrange
         RecipeService serviceWithoutFirestore = new RecipeService();

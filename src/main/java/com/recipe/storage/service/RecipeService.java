@@ -246,6 +246,12 @@ public class RecipeService {
    * @return Paginated list of public recipes
    */
   public PagedRecipeResponse getPublicRecipes(int page, int size) {
+    if (page < 0) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Page index must not be negative");
+    }
+    if (size < 1) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Page size must be at least 1");
+    }
     if (size > 100) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Page size must not exceed 100");
     }
@@ -270,7 +276,7 @@ public class RecipeService {
 
       Query pagedQuery = baseQuery
           .orderBy("createdAt", Query.Direction.DESCENDING)
-          .offset(page * size)
+          .offset(Math.multiplyExact(page, size))
           .limit(size);
 
       ApiFuture<QuerySnapshot> future = pagedQuery.get();

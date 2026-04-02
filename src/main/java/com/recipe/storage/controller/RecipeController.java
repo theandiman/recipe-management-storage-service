@@ -15,12 +15,15 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -41,6 +44,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @Tag(name = "Recipe Storage", description = "APIs for storing and retrieving user recipes")
 @SecurityRequirement(name = "Firebase Auth")
+@Validated
 public class RecipeController {
 
     private final RecipeService recipeService;
@@ -109,11 +113,11 @@ public class RecipeController {
     @io.swagger.v3.oas.annotations.security.SecurityRequirements({})
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Public recipes retrieved successfully", content = @Content(schema = @Schema(implementation = PagedRecipeResponse.class))),
-            @ApiResponse(responseCode = "400", description = "Invalid pagination parameters (size exceeds 100)", content = @Content)
+            @ApiResponse(responseCode = "400", description = "Invalid pagination parameters (page < 0, size < 1, or size > 100)", content = @Content)
     })
     public ResponseEntity<PagedRecipeResponse> getPublicRecipes(
-            @Parameter(description = "Page index (0-based, default: 0)") @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "Page size (default: 20, max: 100)") @RequestParam(defaultValue = "20") int size) {
+            @Parameter(description = "Page index (0-based, default: 0)") @RequestParam(name = "page", defaultValue = "0") @Min(0) int page,
+            @Parameter(description = "Page size (default: 20, min: 1, max: 100)") @RequestParam(name = "size", defaultValue = "20") @Min(1) @Max(100) int size) {
         log.info("Fetching public recipes (page={}, size={})", page, size);
         PagedRecipeResponse response = recipeService.getPublicRecipes(page, size);
         return ResponseEntity.ok(response);
