@@ -281,7 +281,8 @@ public class RecipeService {
         recipes.add(mapToResponse(recipe));
       });
 
-      log.info("Found {} public recipes (page={}, size={}, total={})", recipes.size(), page, size, totalCount);
+      log.info("Found {} public recipes (page={}, size={}, total={})",
+          recipes.size(), page, size, totalCount);
       return PagedRecipeResponse.builder()
           .recipes(recipes)
           .page(page)
