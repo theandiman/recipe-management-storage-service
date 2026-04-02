@@ -20,12 +20,13 @@ public class PagedRecipeResponse {
     @Schema(description = "List of recipes for the requested page")
     private List<RecipeResponse> recipes;
 
-    @Schema(description = "Current page index (0-based)", example = "0")
-    private int page;
-
     @Schema(description = "Number of recipes per page", example = "20")
     private int size;
 
     @Schema(description = "Total number of public recipes", example = "47")
     private long totalCount;
+
+    @Schema(description = "Cursor token to pass as 'pageToken' to retrieve the next page, "
+            + "null when there are no more pages")
+    private String nextPageToken;
 }

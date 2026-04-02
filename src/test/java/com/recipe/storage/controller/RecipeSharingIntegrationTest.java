@@ -1,11 +1,15 @@
 package com.recipe.storage.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.cloud.firestore.Firestore;
+import com.google.firebase.FirebaseApp;
 import com.recipe.storage.dto.CreateRecipeRequest;
 import org.junit.jupiter.api.Test;
+import org.mockito.Answers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -78,6 +82,12 @@ class RecipeSharingAuthEnabledIntegrationTest {
 
         @Autowired
         private MockMvc mockMvc;
+
+        @MockBean
+        private FirebaseApp firebaseApp;
+
+        @MockBean(answer = Answers.RETURNS_DEEP_STUBS)
+        private Firestore mockFirestore;
 
         @Test
         void getPublicRecipe_NoAuthHeader_IsAllowed_WhenAuthEnabled() throws Exception {

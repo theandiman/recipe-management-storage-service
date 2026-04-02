@@ -99,19 +99,16 @@ class RecipeControllerIntegrationTest {
         mockMvc.perform(get("/api/recipes/public"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.recipes").isArray())
-                .andExpect(jsonPath("$.page").value(0))
                 .andExpect(jsonPath("$.size").value(20))
                 .andExpect(jsonPath("$.totalCount").value(0));
     }
 
     @Test
-    void getPublicRecipes_WithPaginationParams_Success() throws Exception {
+    void getPublicRecipes_WithSizeParam_Success() throws Exception {
         mockMvc.perform(get("/api/recipes/public")
-                .param("page", "1")
                 .param("size", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.recipes").isArray())
-                .andExpect(jsonPath("$.page").value(1))
                 .andExpect(jsonPath("$.size").value(10));
     }
 

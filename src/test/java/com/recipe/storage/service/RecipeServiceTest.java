@@ -362,15 +362,15 @@ class RecipeServiceTest {
         ReflectionTestUtils.setField(serviceWithoutFirestore, "recipesCollection", "recipes");
 
         // Act
-        PagedRecipeResponse response = serviceWithoutFirestore.getPublicRecipes(0, 20);
+        PagedRecipeResponse response = serviceWithoutFirestore.getPublicRecipes(null, 20);
 
         // Assert
         assertNotNull(response);
         assertNotNull(response.getRecipes());
         assertTrue(response.getRecipes().isEmpty());
-        assertEquals(0, response.getPage());
         assertEquals(20, response.getSize());
         assertEquals(0, response.getTotalCount());
+        assertNull(response.getNextPageToken());
     }
 
     @Test
@@ -382,20 +382,7 @@ class RecipeServiceTest {
         // Act & Assert
         org.springframework.web.server.ResponseStatusException exception = assertThrows(
                 org.springframework.web.server.ResponseStatusException.class,
-                () -> serviceWithoutFirestore.getPublicRecipes(0, 101));
-        assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, exception.getStatusCode());
-    }
-
-    @Test
-    void getPublicRecipes_NegativePage_ThrowsBadRequest() {
-        // Arrange
-        RecipeService serviceWithoutFirestore = new RecipeService();
-        ReflectionTestUtils.setField(serviceWithoutFirestore, "recipesCollection", "recipes");
-
-        // Act & Assert
-        org.springframework.web.server.ResponseStatusException exception = assertThrows(
-                org.springframework.web.server.ResponseStatusException.class,
-                () -> serviceWithoutFirestore.getPublicRecipes(-1, 20));
+                () -> serviceWithoutFirestore.getPublicRecipes(null, 101));
         assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, exception.getStatusCode());
     }
 
@@ -408,7 +395,7 @@ class RecipeServiceTest {
         // Act & Assert
         org.springframework.web.server.ResponseStatusException exception = assertThrows(
                 org.springframework.web.server.ResponseStatusException.class,
-                () -> serviceWithoutFirestore.getPublicRecipes(0, 0));
+                () -> serviceWithoutFirestore.getPublicRecipes(null, 0));
         assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, exception.getStatusCode());
     }
 
@@ -421,7 +408,7 @@ class RecipeServiceTest {
         // Act & Assert
         org.springframework.web.server.ResponseStatusException exception = assertThrows(
                 org.springframework.web.server.ResponseStatusException.class,
-                () -> serviceWithoutFirestore.getPublicRecipes(0, -5));
+                () -> serviceWithoutFirestore.getPublicRecipes(null, -5));
         assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, exception.getStatusCode());
     }
 
@@ -432,24 +419,22 @@ class RecipeServiceTest {
         ReflectionTestUtils.setField(serviceWithoutFirestore, "recipesCollection", "recipes");
 
         // Act & Assert - size == 100 should not throw
-        PagedRecipeResponse response = serviceWithoutFirestore.getPublicRecipes(0, 100);
+        PagedRecipeResponse response = serviceWithoutFirestore.getPublicRecipes(null, 100);
         assertNotNull(response);
         assertEquals(100, response.getSize());
     }
 
     @Test
-    void getPublicRecipes_NthPage_ReflectsPageParam() {
-        // Arrange
+    void getPublicRecipes_InvalidPageToken_ThrowsBadRequest() {
+        // Arrange - token is validated before any Firestore call, so no Firestore needed
         RecipeService serviceWithoutFirestore = new RecipeService();
         ReflectionTestUtils.setField(serviceWithoutFirestore, "recipesCollection", "recipes");
 
-        // Act
-        PagedRecipeResponse response = serviceWithoutFirestore.getPublicRecipes(3, 10);
-
-        // Assert
-        assertNotNull(response);
-        assertEquals(3, response.getPage());
-        assertEquals(10, response.getSize());
+        // Act & Assert
+        org.springframework.web.server.ResponseStatusException exception = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> serviceWithoutFirestore.getPublicRecipes("not-valid-base64!!!", 10));
+        assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, exception.getStatusCode());
     }
 
     @Test

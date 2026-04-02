@@ -107,19 +107,25 @@ public class RecipeController {
      * @return Paginated public recipes
      */
     @GetMapping("/public")
-    @Operation(summary = "Get public recipes", description = "Retrieves recipes that have been marked as public, "
-            + "ordered by creation date (newest first). Supports optional pagination via 'page' and 'size' query "
-            + "parameters. No authentication required.")
+    @Operation(summary = "Get public recipes", description = "Retrieves recipes that have been "
+            + "marked as public, ordered by creation date (newest first). Supports cursor-based "
+            + "pagination via 'pageToken' and 'size' query parameters. No authentication required.")
     @io.swagger.v3.oas.annotations.security.SecurityRequirements({})
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Public recipes retrieved successfully", content = @Content(schema = @Schema(implementation = PagedRecipeResponse.class))),
-            @ApiResponse(responseCode = "400", description = "Invalid pagination parameters (page < 0, size < 1, or size > 100)", content = @Content)
+            @ApiResponse(responseCode = "200", description = "Public recipes retrieved successfully",
+                    content = @Content(schema = @Schema(implementation = PagedRecipeResponse.class))),
+            @ApiResponse(responseCode = "400",
+                    description = "Invalid pagination parameters (size < 1, size > 100, "
+                            + "or malformed pageToken)",
+                    content = @Content)
     })
     public ResponseEntity<PagedRecipeResponse> getPublicRecipes(
-            @Parameter(description = "Page index (0-based, default: 0)") @RequestParam(name = "page", defaultValue = "0") @Min(0) int page,
-            @Parameter(description = "Page size (default: 20, min: 1, max: 100)") @RequestParam(name = "size", defaultValue = "20") @Min(1) @Max(100) int size) {
-        log.info("Fetching public recipes (page={}, size={})", page, size);
-        PagedRecipeResponse response = recipeService.getPublicRecipes(page, size);
+            @Parameter(description = "Cursor token from a previous response (omit for first page)")
+            @RequestParam(name = "pageToken", required = false) String pageToken,
+            @Parameter(description = "Page size (default: 20, min: 1, max: 100)")
+            @RequestParam(name = "size", defaultValue = "20") @Min(1) @Max(100) int size) {
+        log.info("Fetching public recipes (pageToken={}, size={})", pageToken, size);
+        PagedRecipeResponse response = recipeService.getPublicRecipes(pageToken, size);
         return ResponseEntity.ok(response);
     }
 
