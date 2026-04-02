@@ -264,7 +264,8 @@ public class RecipeService {
       Query baseQuery = firestore.collection(recipesCollection)
           .whereEqualTo("isPublic", true);
 
-      AggregateQuerySnapshot countSnapshot = baseQuery.count().get().get();
+      ApiFuture<AggregateQuerySnapshot> countFuture = baseQuery.count().get();
+      AggregateQuerySnapshot countSnapshot = countFuture.get();
       long totalCount = countSnapshot.getCount();
 
       Query pagedQuery = baseQuery
