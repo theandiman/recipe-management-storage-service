@@ -66,10 +66,22 @@ class RecipeSharingIntegrationTest {
                 mockMvc.perform(get("/api/recipes/some-recipe-id/public"))
                                 .andExpect(status().isNotFound());
         }
+}
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@TestPropertySource(properties = {
+                "auth.enabled=true",
+                "firestore.collection.recipes=test-recipes"
+})
+class RecipeSharingAuthEnabledIntegrationTest {
+
+        @Autowired
+        private MockMvc mockMvc;
 
         @Test
-        void getPublicRecipe_NoAuthHeader_IsAllowed() throws Exception {
-                // Endpoint should be reachable without Authorization header.
+        void getPublicRecipe_NoAuthHeader_IsAllowed_WhenAuthEnabled() throws Exception {
+                // Endpoint should be reachable without Authorization header even when auth is enabled.
                 // Without Firestore the service returns 404 (not 401/403).
                 mockMvc.perform(get("/api/recipes/some-recipe-id/public"))
                                 .andExpect(status().isNotFound());
