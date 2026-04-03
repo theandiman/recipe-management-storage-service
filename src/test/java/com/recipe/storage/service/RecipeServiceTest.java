@@ -56,9 +56,6 @@ class RecipeServiceTest {
     @Mock
     private FirebaseAuth firebaseAuth;
 
-    @Mock
-    private FirebaseAuth firebaseAuth;
-
     private RecipeService recipeService;
 
     @BeforeEach
