@@ -76,4 +76,8 @@ public class RecipeResponse {
     @Schema(description = "Whether the recipe is shared with everyone", example = "true")
     @JsonProperty("isPublic")
     private boolean isPublic;
+
+    @Schema(description = "Display name of the recipe author (populated for public recipes)", nullable = true,
+            example = "Jane Smith")
+    private String authorDisplayName;
 }

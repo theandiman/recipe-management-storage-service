@@ -2,6 +2,7 @@ package com.recipe.storage.controller;
 
 import com.google.cloud.firestore.Firestore;
 import com.google.firebase.FirebaseApp;
+import com.google.firebase.auth.FirebaseAuth;
 import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +31,9 @@ class RecipeSharingAuthEnabledIntegrationTest {
 
         @MockBean(answer = Answers.RETURNS_DEEP_STUBS)
         private Firestore mockFirestore;
+
+        @MockBean
+        private FirebaseAuth firebaseAuth;
 
         @Test
         void getPublicRecipe_NoAuthHeader_IsAllowed_WhenAuthEnabled() throws Exception {
