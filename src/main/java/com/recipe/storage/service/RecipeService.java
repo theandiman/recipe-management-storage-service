@@ -337,8 +337,8 @@ public class RecipeService {
    */
   public List<RecipeResponse> getUserRecipes(String userId) {
     if (firestore == null) {
-      log.warn("Firestore not configured - returning empty list");
-      return new ArrayList<>();
+      log.warn("Firestore not configured - returning from in-memory store");
+      return getMockUserRecipes(userId);
     }
 
     try {
@@ -375,8 +375,8 @@ public class RecipeService {
    */
   public List<RecipeResponse> getPublicRecipes() {
     if (firestore == null) {
-      log.warn("Firestore not configured - returning empty list");
-      return new ArrayList<>();
+      log.warn("Firestore not configured - returning from in-memory store");
+      return getMockPublicRecipes();
     }
 
     try {

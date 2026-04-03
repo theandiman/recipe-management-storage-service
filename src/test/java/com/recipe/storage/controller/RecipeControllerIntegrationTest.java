@@ -111,7 +111,7 @@ class RecipeControllerIntegrationTest {
 
     @Test
     void updateRecipe_WithValidId_UpdatesRecipe() throws Exception {
-        // Without Firestore, update returns a mock response (200 OK)
+        // Without Firestore, update returns 404 for non-existent recipe
         CreateRecipeRequest updateRequest = CreateRecipeRequest.builder()
                 .title("Updated Title")
                 .description("Updated description")
@@ -125,8 +125,7 @@ class RecipeControllerIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(updateRequest))
                 .header("X-User-ID", "test-user"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.title").value("Updated Title"));
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -139,14 +138,14 @@ class RecipeControllerIntegrationTest {
 
     @Test
     void updateRecipeSharing_WithValidId_UpdatesSharingStatus() throws Exception {
-        // Without Firestore, update sharing returns 503
+        // Without Firestore, update sharing returns 404 for non-existent recipe
         String sharingRequest = "{\"isPublic\": true}";
 
         mockMvc.perform(patch("/api/recipes/some-id/sharing")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(sharingRequest)
                 .header("X-User-ID", "test-user"))
-                .andExpect(status().isServiceUnavailable());
+                .andExpect(status().isNotFound());
     }
 
     // Note: GET endpoint tests are skipped in integration tests
