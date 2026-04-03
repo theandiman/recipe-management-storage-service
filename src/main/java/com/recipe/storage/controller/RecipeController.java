@@ -158,6 +158,107 @@ public class RecipeController {
     }
 
     /**
+     * Get the paginated list of saved (bookmarked) recipes for the authenticated user.
+     * Requires Firebase authentication.
+     *
+     * @param pageToken Cursor token from a previous response (null/omitted for first page)
+     * @param size      Number of recipes per page (default 20, max 100)
+     * @param userId    The authenticated user's Firebase UID (injected by auth filter)
+     * @return Paginated saved recipes
+     */
+    @GetMapping("/saved")
+    @Operation(summary = "Get saved recipes", description = "Returns the paginated list of recipes bookmarked "
+            + "by the authenticated user, ordered by save date (newest first). "
+            + "Requires Firebase authentication token in Authorization header.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Saved recipes retrieved successfully",
+                    content = @Content(schema = @Schema(implementation = PagedRecipeResponse.class))),
+            @ApiResponse(responseCode = "400",
+                    description = "Invalid pagination parameters (size < 1, size > 100, or malformed pageToken)",
+                    content = @Content),
+            @ApiResponse(responseCode = "401", description = "Unauthorized - invalid or missing Firebase token",
+                    content = @Content)
+    })
+    public ResponseEntity<PagedRecipeResponse> getSavedRecipes(
+            @Parameter(description = "Cursor token from a previous response (omit for first page)")
+            @RequestParam(name = "pageToken", required = false) String pageToken,
+            @Parameter(description = "Page size (default: 20, min: 1, max: 100)")
+            @RequestParam(name = "size", defaultValue = "20") @Min(1) @Max(100) int size,
+            @Parameter(hidden = true) @RequestAttribute("userId") String userId) {
+
+        log.info("Fetching saved recipes for user {} (pageToken={}, size={})", userId, pageToken, size);
+        PagedRecipeResponse response = recipeService.getSavedRecipes(userId, pageToken, size);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Save (bookmark) a recipe for the authenticated user.
+     * Idempotent – calling this when the recipe is already saved is a no-op.
+     * Requires Firebase authentication.
+     *
+     * @param recipeId The recipe ID to save
+     * @param userId   The authenticated user's Firebase UID (injected by auth filter)
+     * @return 204 No Content on success
+     */
+    @PostMapping("/{recipeId}/save")
+    @Operation(summary = "Save a recipe", description = "Bookmarks a recipe for the authenticated user. "
+            + "Idempotent – calling this when the recipe is already saved is a no-op. "
+            + "Requires Firebase authentication token in Authorization header.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Recipe saved successfully", content = @Content),
+            @ApiResponse(responseCode = "401", description = "Unauthorized - invalid or missing Firebase token",
+                    content = @Content),
+            @ApiResponse(responseCode = "404", description = "Recipe not found", content = @Content),
+            @ApiResponse(responseCode = "503", description = "Database not configured", content = @Content)
+    })
+    public ResponseEntity<Void> saveRecipeForUser(
+            @Parameter(description = "Recipe ID to save", required = true) @PathVariable String recipeId,
+            @Parameter(hidden = true) @RequestAttribute("userId") String userId) {
+
+        MDC.put("recipe.id", recipeId);
+        try {
+            log.info("Saving recipe {} for user {}", recipeId, userId);
+            recipeService.saveRecipeForUser(recipeId, userId);
+            return ResponseEntity.noContent().build();
+        } finally {
+            MDC.remove("recipe.id");
+        }
+    }
+
+    /**
+     * Unsave (remove bookmark) a recipe for the authenticated user.
+     * Idempotent – calling this when the recipe is not saved is a no-op.
+     * Requires Firebase authentication.
+     *
+     * @param recipeId The recipe ID to unsave
+     * @param userId   The authenticated user's Firebase UID (injected by auth filter)
+     * @return 204 No Content on success
+     */
+    @DeleteMapping("/{recipeId}/save")
+    @Operation(summary = "Unsave a recipe", description = "Removes a recipe from the authenticated user's bookmarks. "
+            + "Idempotent – calling this when the recipe is not saved is a no-op. "
+            + "Requires Firebase authentication token in Authorization header.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Recipe unsaved successfully", content = @Content),
+            @ApiResponse(responseCode = "401", description = "Unauthorized - invalid or missing Firebase token",
+                    content = @Content),
+            @ApiResponse(responseCode = "503", description = "Database not configured", content = @Content)
+    })
+    public ResponseEntity<Void> unsaveRecipeForUser(
+            @Parameter(description = "Recipe ID to unsave", required = true) @PathVariable String recipeId,
+            @Parameter(hidden = true) @RequestAttribute("userId") String userId) {
+
+        MDC.put("recipe.id", recipeId);
+        try {
+            log.info("Unsaving recipe {} for user {}", recipeId, userId);
+            recipeService.unsaveRecipeForUser(recipeId, userId);
+            return ResponseEntity.noContent().build();
+        } finally {
+            MDC.remove("recipe.id");
+        }
+    }
+
+    /**
      * Get a specific recipe by ID.
      * Requires Firebase authentication and user must own the recipe.
      *
