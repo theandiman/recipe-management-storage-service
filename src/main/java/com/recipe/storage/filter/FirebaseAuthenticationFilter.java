@@ -99,9 +99,15 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
       }
 
       if (!authEnabled) {
-        log.warn("Authentication is disabled - using test user");
-        request.setAttribute("userId", "test-user");
-        MDC.put("user.id", "test-user");
+        // When auth is disabled (dev/test mode only), allow caller to specify userId via header.
+        // Falls back to "test-user" if no header is provided.
+        String userId = request.getHeader("userId");
+        if (userId == null || userId.isEmpty()) {
+          userId = "test-user";
+        }
+        log.warn("Authentication is disabled - using user: {}", userId);
+        request.setAttribute("userId", userId);
+        MDC.put("user.id", userId);
         filterChain.doFilter(request, response);
         return;
       }

@@ -31,13 +31,16 @@ jobs:
     name: Deploy
     needs: ci
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    uses: theandiman/recipe-management/.github/workflows/backend-java-cloud-run-cd.yml@973f68b323d96d59ce2ac00723f4ecc641c063f5
+    uses: theandiman/recipe-management/.github/workflows/backend-java-cloud-run-cd.yml@c9051e128e0cb76c0f057029629713d0ce1d0565
     permissions:
       contents: write
       actions: write
+      id-token: write
     with:
       service_name: recipe-management-service
       artifact_registry_repository: recipe-management
+      use_wif: true
     secrets:
-      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
       GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      GCP_DEPLOY_SA: ${{ secrets.GCP_DEPLOY_SA }}
