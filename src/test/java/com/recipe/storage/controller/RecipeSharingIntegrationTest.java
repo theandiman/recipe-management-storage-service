@@ -59,10 +59,11 @@ class RecipeSharingIntegrationTest {
 
         @Test
         void getPublicRecipes_ReturnsOk() throws Exception {
+                // Firestore is not mocked, so returns an empty paged envelope
                 mockMvc.perform(get("/api/recipes/public"))
-                                .andExpect(status().isOk());
-                // Expect empty list because Firestore is not mocked
-                // .andExpect(jsonPath("$").isArray());
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.recipes").isArray())
+                                .andExpect(jsonPath("$.totalCount").value(0));
         }
 
         @Test

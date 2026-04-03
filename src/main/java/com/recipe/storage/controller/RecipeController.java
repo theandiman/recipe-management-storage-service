@@ -102,7 +102,7 @@ public class RecipeController {
      * Get public recipes with optional pagination.
      * Does NOT require authentication.
      *
-     * @param page Page index (0-based, default 0)
+     * @param pageToken Cursor token from a previous response (null/omitted for first page)
      * @param size Number of recipes per page (default 20, max 100)
      * @return Paginated public recipes
      */
