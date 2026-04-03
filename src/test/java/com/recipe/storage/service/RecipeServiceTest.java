@@ -1,8 +1,12 @@
 package com.recipe.storage.service;
 
 import com.google.api.core.ApiFuture;
+import com.google.cloud.Timestamp;
+import com.google.cloud.firestore.AggregateQuery;
+import com.google.cloud.firestore.AggregateQuerySnapshot;
 import com.google.cloud.firestore.CollectionReference;
 import com.google.cloud.firestore.DocumentReference;
+import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.cloud.firestore.Firestore;
 import com.google.cloud.firestore.Query;
 import com.google.cloud.firestore.QueryDocumentSnapshot;
@@ -12,6 +16,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.UserRecord;
 import com.recipe.storage.dto.CreateRecipeRequest;
+import com.recipe.storage.dto.PagedRecipeResponse;
 import com.recipe.storage.dto.RecipeResponse;
 import com.recipe.shared.model.Recipe;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,7 +26,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
@@ -367,129 +374,85 @@ class RecipeServiceTest {
     }
 
     @Test
-    void getPublicRecipes_PopulatesAuthorDisplayName() throws Exception {
+    void getPublicRecipes_NoFirestore_ReturnsEmptyPagedResponse() {
         // Arrange
-        String userId = "user123";
-        String displayName = "Jane Smith";
-
-        CollectionReference collectionRef = mock(CollectionReference.class);
-        Query query = mock(Query.class);
-        ApiFuture<QuerySnapshot> queryFuture = mock(ApiFuture.class);
-        QuerySnapshot querySnapshot = mock(QuerySnapshot.class);
-        QueryDocumentSnapshot docSnapshot = mock(QueryDocumentSnapshot.class);
-        UserRecord userRecord = mock(UserRecord.class);
-
-        when(firestore.collection(anyString())).thenReturn(collectionRef);
-        when(collectionRef.whereEqualTo("isPublic", true)).thenReturn(query);
-        when(query.get()).thenReturn(queryFuture);
-        when(queryFuture.get()).thenReturn(querySnapshot);
-
-        Recipe recipe = Recipe.builder()
-                .id("recipe1")
-                .userId(userId)
-                .recipeName("Public Recipe")
-                .publicRecipe(true)
-                .createdAt(Instant.now())
-                .build();
-        when(querySnapshot.getDocuments()).thenReturn(List.of(docSnapshot));
-        when(docSnapshot.toObject(Recipe.class)).thenReturn(recipe);
-        when(firebaseAuth.getUser(userId)).thenReturn(userRecord);
-        when(userRecord.getDisplayName()).thenReturn(displayName);
+        RecipeService serviceWithoutFirestore = new RecipeService();
+        ReflectionTestUtils.setField(serviceWithoutFirestore, "recipesCollection", "recipes");
 
         // Act
-        List<RecipeResponse> responses = recipeService.getPublicRecipes();
+        PagedRecipeResponse response = serviceWithoutFirestore.getPublicRecipes(null, 20);
 
         // Assert
-        assertNotNull(responses);
-        assertEquals(1, responses.size());
-        assertEquals(displayName, responses.get(0).getAuthorDisplayName());
+        assertNotNull(response);
+        assertNotNull(response.getRecipes());
+        assertTrue(response.getRecipes().isEmpty());
+        assertEquals(20, response.getSize());
+        assertEquals(0, response.getTotalCount());
+        assertNull(response.getNextPageToken());
     }
 
     @Test
-    void getPublicRecipes_FirebaseLookupFails_ReturnsNullDisplayName() throws Exception {
+    void getPublicRecipes_SizeExceedsMax_ThrowsBadRequest() {
         // Arrange
-        String userId = "user123";
+        RecipeService serviceWithoutFirestore = new RecipeService();
+        ReflectionTestUtils.setField(serviceWithoutFirestore, "recipesCollection", "recipes");
 
-        CollectionReference collectionRef = mock(CollectionReference.class);
-        Query query = mock(Query.class);
-        ApiFuture<QuerySnapshot> queryFuture = mock(ApiFuture.class);
-        QuerySnapshot querySnapshot = mock(QuerySnapshot.class);
-        QueryDocumentSnapshot docSnapshot = mock(QueryDocumentSnapshot.class);
-        FirebaseAuthException authException = mock(FirebaseAuthException.class);
-
-        when(firestore.collection(anyString())).thenReturn(collectionRef);
-        when(collectionRef.whereEqualTo("isPublic", true)).thenReturn(query);
-        when(query.get()).thenReturn(queryFuture);
-        when(queryFuture.get()).thenReturn(querySnapshot);
-
-        Recipe recipe = Recipe.builder()
-                .id("recipe1")
-                .userId(userId)
-                .recipeName("Public Recipe")
-                .publicRecipe(true)
-                .createdAt(Instant.now())
-                .build();
-        when(querySnapshot.getDocuments()).thenReturn(List.of(docSnapshot));
-        when(docSnapshot.toObject(Recipe.class)).thenReturn(recipe);
-        when(firebaseAuth.getUser(userId)).thenThrow(authException);
-
-        // Act
-        List<RecipeResponse> responses = recipeService.getPublicRecipes();
-
-        // Assert
-        assertNotNull(responses);
-        assertEquals(1, responses.size());
-        assertNull(responses.get(0).getAuthorDisplayName());
+        // Act & Assert
+        org.springframework.web.server.ResponseStatusException exception = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> serviceWithoutFirestore.getPublicRecipes(null, 101));
+        assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, exception.getStatusCode());
     }
 
     @Test
-    void getPublicRecipes_SameUserId_FirebaseLookupCalledOncePerUniqueUser() throws Exception {
+    void getPublicRecipes_ZeroSize_ThrowsBadRequest() {
         // Arrange
-        String sharedUserId = "user123";
-        String displayName = "Shared Author";
+        RecipeService serviceWithoutFirestore = new RecipeService();
+        ReflectionTestUtils.setField(serviceWithoutFirestore, "recipesCollection", "recipes");
 
-        CollectionReference collectionRef = mock(CollectionReference.class);
-        Query query = mock(Query.class);
-        ApiFuture<QuerySnapshot> queryFuture = mock(ApiFuture.class);
-        QuerySnapshot querySnapshot = mock(QuerySnapshot.class);
-        QueryDocumentSnapshot docSnapshot1 = mock(QueryDocumentSnapshot.class);
-        QueryDocumentSnapshot docSnapshot2 = mock(QueryDocumentSnapshot.class);
-        UserRecord userRecord = mock(UserRecord.class);
+        // Act & Assert
+        org.springframework.web.server.ResponseStatusException exception = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> serviceWithoutFirestore.getPublicRecipes(null, 0));
+        assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, exception.getStatusCode());
+    }
 
-        when(firestore.collection(anyString())).thenReturn(collectionRef);
-        when(collectionRef.whereEqualTo("isPublic", true)).thenReturn(query);
-        when(query.get()).thenReturn(queryFuture);
-        when(queryFuture.get()).thenReturn(querySnapshot);
+    @Test
+    void getPublicRecipes_NegativeSize_ThrowsBadRequest() {
+        // Arrange
+        RecipeService serviceWithoutFirestore = new RecipeService();
+        ReflectionTestUtils.setField(serviceWithoutFirestore, "recipesCollection", "recipes");
 
-        Recipe recipe1 = Recipe.builder()
-                .id("recipe1")
-                .userId(sharedUserId)
-                .recipeName("Public Recipe 1")
-                .publicRecipe(true)
-                .createdAt(Instant.now())
-                .build();
-        Recipe recipe2 = Recipe.builder()
-                .id("recipe2")
-                .userId(sharedUserId)
-                .recipeName("Public Recipe 2")
-                .publicRecipe(true)
-                .createdAt(Instant.now())
-                .build();
-        when(querySnapshot.getDocuments()).thenReturn(List.of(docSnapshot1, docSnapshot2));
-        when(docSnapshot1.toObject(Recipe.class)).thenReturn(recipe1);
-        when(docSnapshot2.toObject(Recipe.class)).thenReturn(recipe2);
-        when(firebaseAuth.getUser(sharedUserId)).thenReturn(userRecord);
-        when(userRecord.getDisplayName()).thenReturn(displayName);
+        // Act & Assert
+        org.springframework.web.server.ResponseStatusException exception = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> serviceWithoutFirestore.getPublicRecipes(null, -5));
+        assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, exception.getStatusCode());
+    }
 
-        // Act
-        List<RecipeResponse> responses = recipeService.getPublicRecipes();
+    @Test
+    void getPublicRecipes_SizeAtMax_DoesNotThrow() {
+        // Arrange
+        RecipeService serviceWithoutFirestore = new RecipeService();
+        ReflectionTestUtils.setField(serviceWithoutFirestore, "recipesCollection", "recipes");
 
-        // Assert
-        assertNotNull(responses);
-        assertEquals(2, responses.size());
-        responses.forEach(r -> assertEquals(displayName, r.getAuthorDisplayName()));
-        // Firebase lookup must be called only once despite two recipes sharing the same userId
-        verify(firebaseAuth, times(1)).getUser(sharedUserId);
+        // Act & Assert - size == 100 should not throw
+        PagedRecipeResponse response = serviceWithoutFirestore.getPublicRecipes(null, 100);
+        assertNotNull(response);
+        assertEquals(100, response.getSize());
+    }
+
+    @Test
+    void getPublicRecipes_InvalidPageToken_ThrowsBadRequest() {
+        // Arrange - token is validated before any Firestore call, so no Firestore needed
+        RecipeService serviceWithoutFirestore = new RecipeService();
+        ReflectionTestUtils.setField(serviceWithoutFirestore, "recipesCollection", "recipes");
+
+        // Act & Assert
+        org.springframework.web.server.ResponseStatusException exception = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> serviceWithoutFirestore.getPublicRecipes("not-valid-base64!!!", 10));
+        assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, exception.getStatusCode());
     }
 
     @Test
@@ -639,6 +602,156 @@ class RecipeServiceTest {
                 org.springframework.web.server.ResponseStatusException.class,
                 () -> serviceWithoutFirestore.getPublicRecipe(recipeId));
         assertEquals(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE, exception.getStatusCode());
+    }
+
+    @Test
+    void getPublicRecipes_WithFirestore_ReturnsPagedResponse()
+            throws ExecutionException, InterruptedException {
+        // Arrange: mock collection and base where-query
+        CollectionReference collectionRef = mock(CollectionReference.class);
+        when(firestore.collection(anyString())).thenReturn(collectionRef);
+        Query baseQuery = mock(Query.class);
+        when(collectionRef.whereEqualTo("isPublic", true)).thenReturn(baseQuery);
+
+        // Mock count aggregation
+        AggregateQuery aggregateQuery = mock(AggregateQuery.class);
+        when(baseQuery.count()).thenReturn(aggregateQuery);
+        @SuppressWarnings("unchecked")
+        ApiFuture<AggregateQuerySnapshot> countFuture = mock(ApiFuture.class);
+        when(aggregateQuery.get()).thenReturn(countFuture);
+        AggregateQuerySnapshot countSnapshot = mock(AggregateQuerySnapshot.class);
+        when(countFuture.get()).thenReturn(countSnapshot);
+        when(countSnapshot.getCount()).thenReturn(1L);
+
+        // Mock orderBy/limit chain
+        Query orderedQuery = mock(Query.class);
+        when(baseQuery.orderBy("createdAt", Query.Direction.DESCENDING)).thenReturn(orderedQuery);
+        Query limitedQuery = mock(Query.class);
+        when(orderedQuery.limit(20)).thenReturn(limitedQuery);
+
+        // Mock query execution with one document result
+        @SuppressWarnings("unchecked")
+        ApiFuture<QuerySnapshot> queryFuture = mock(ApiFuture.class);
+        when(limitedQuery.get()).thenReturn(queryFuture);
+        QuerySnapshot querySnapshot = mock(QuerySnapshot.class);
+        when(queryFuture.get()).thenReturn(querySnapshot);
+
+        QueryDocumentSnapshot docSnapshot = mock(QueryDocumentSnapshot.class);
+        Recipe recipe = Recipe.builder()
+                .id("id1").userId("user1").recipeName("Pasta").publicRecipe(true).build();
+        when(docSnapshot.toObject(Recipe.class)).thenReturn(recipe);
+        Timestamp ts = Timestamp.ofTimeSecondsAndNanos(1743000000L, 0);
+        when(docSnapshot.getTimestamp("createdAt")).thenReturn(ts);
+
+        List<QueryDocumentSnapshot> docs = List.of(docSnapshot);
+        when(querySnapshot.getDocuments()).thenReturn(docs);
+        when(querySnapshot.isEmpty()).thenReturn(false);
+
+        // Act
+        PagedRecipeResponse response = recipeService.getPublicRecipes(null, 20);
+
+        // Assert
+        assertNotNull(response);
+        assertEquals(1, response.getRecipes().size());
+        assertEquals(1L, response.getTotalCount());
+        assertEquals(20, response.getSize());
+        assertNotNull(response.getNextPageToken()); // last doc has createdAt → token encoded
+    }
+
+    @Test
+    void getPublicRecipes_WithValidPageToken_StartsAfterCursor()
+            throws ExecutionException, InterruptedException {
+        // Build a valid token: URL-safe base64 of "1743000000,0"
+        String token = Base64.getUrlEncoder().withoutPadding()
+                .encodeToString("1743000000,0".getBytes(StandardCharsets.UTF_8));
+
+        // Arrange: mock collection and base where-query
+        CollectionReference collectionRef = mock(CollectionReference.class);
+        when(firestore.collection(anyString())).thenReturn(collectionRef);
+        Query baseQuery = mock(Query.class);
+        when(collectionRef.whereEqualTo("isPublic", true)).thenReturn(baseQuery);
+
+        // Mock count aggregation
+        AggregateQuery aggregateQuery = mock(AggregateQuery.class);
+        when(baseQuery.count()).thenReturn(aggregateQuery);
+        @SuppressWarnings("unchecked")
+        ApiFuture<AggregateQuerySnapshot> countFuture = mock(ApiFuture.class);
+        when(aggregateQuery.get()).thenReturn(countFuture);
+        AggregateQuerySnapshot countSnapshot = mock(AggregateQuerySnapshot.class);
+        when(countFuture.get()).thenReturn(countSnapshot);
+        when(countSnapshot.getCount()).thenReturn(5L);
+
+        // Mock orderBy → startAfter → limit chain
+        Query orderedQuery = mock(Query.class);
+        when(baseQuery.orderBy("createdAt", Query.Direction.DESCENDING)).thenReturn(orderedQuery);
+        Query afterQuery = mock(Query.class);
+        when(orderedQuery.startAfter(any(Timestamp.class))).thenReturn(afterQuery);
+        Query limitedQuery = mock(Query.class);
+        when(afterQuery.limit(10)).thenReturn(limitedQuery);
+
+        // Mock empty result (no next page)
+        @SuppressWarnings("unchecked")
+        ApiFuture<QuerySnapshot> queryFuture = mock(ApiFuture.class);
+        when(limitedQuery.get()).thenReturn(queryFuture);
+        QuerySnapshot querySnapshot = mock(QuerySnapshot.class);
+        when(queryFuture.get()).thenReturn(querySnapshot);
+        when(querySnapshot.getDocuments()).thenReturn(List.of());
+        when(querySnapshot.isEmpty()).thenReturn(true);
+
+        // Act
+        PagedRecipeResponse response = recipeService.getPublicRecipes(token, 10);
+
+        // Assert
+        assertNotNull(response);
+        assertTrue(response.getRecipes().isEmpty());
+        assertEquals(5L, response.getTotalCount());
+        assertNull(response.getNextPageToken()); // empty result → no next page
+        verify(orderedQuery).startAfter(any(Timestamp.class));
+    }
+
+    @Test
+    void getPublicRecipe_NullDocument_ThrowsNotFoundException()
+            throws ExecutionException, InterruptedException {
+        // Arrange: future.get() returns null
+        String recipeId = "recipe123";
+        CollectionReference collectionRef = mock(CollectionReference.class);
+        when(firestore.collection(anyString())).thenReturn(collectionRef);
+        when(collectionRef.document(recipeId)).thenReturn(documentReference);
+
+        @SuppressWarnings("unchecked")
+        ApiFuture<DocumentSnapshot> futureSnapshot = mock(ApiFuture.class);
+        when(documentReference.get()).thenReturn(futureSnapshot);
+        when(futureSnapshot.get()).thenReturn(null);
+
+        // Act & Assert
+        org.springframework.web.server.ResponseStatusException exception = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> recipeService.getPublicRecipe(recipeId));
+        assertEquals(org.springframework.http.HttpStatus.NOT_FOUND, exception.getStatusCode());
+    }
+
+    @Test
+    void getPublicRecipe_NullRecipeDeserialization_ThrowsNotFoundException()
+            throws ExecutionException, InterruptedException {
+        // Arrange: document exists but toObject returns null
+        String recipeId = "recipe123";
+        CollectionReference collectionRef = mock(CollectionReference.class);
+        when(firestore.collection(anyString())).thenReturn(collectionRef);
+        when(collectionRef.document(recipeId)).thenReturn(documentReference);
+
+        @SuppressWarnings("unchecked")
+        ApiFuture<DocumentSnapshot> futureSnapshot = mock(ApiFuture.class);
+        DocumentSnapshot documentSnapshot = mock(DocumentSnapshot.class);
+        when(documentReference.get()).thenReturn(futureSnapshot);
+        when(futureSnapshot.get()).thenReturn(documentSnapshot);
+        when(documentSnapshot.exists()).thenReturn(true);
+        when(documentSnapshot.toObject(Recipe.class)).thenReturn(null);
+
+        // Act & Assert
+        org.springframework.web.server.ResponseStatusException exception = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> recipeService.getPublicRecipe(recipeId));
+        assertEquals(org.springframework.http.HttpStatus.NOT_FOUND, exception.getStatusCode());
     }
 
     private CreateRecipeRequest createValidRequest() {
