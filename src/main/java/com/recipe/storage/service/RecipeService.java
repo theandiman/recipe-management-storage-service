@@ -55,6 +55,9 @@ public class RecipeService {
   // In-memory store for testing when Firestore is not available
   private final ConcurrentHashMap<String, Recipe> mockStore = new ConcurrentHashMap<>();
 
+  // In-memory store for testing when Firestore is not available
+  private final ConcurrentHashMap<String, Recipe> mockStore = new ConcurrentHashMap<>();
+
   /**
    * Save a new recipe to Firestore.
    *
