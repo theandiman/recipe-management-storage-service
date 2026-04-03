@@ -58,9 +58,9 @@ public class UserProfileService {
         log.info("User not found: {}", uid);
         throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + uid);
       }
-      log.error("Failed to fetch user record for uid={}: {}", uid, e.getMessage());
+      log.error("Failed to fetch user record for uid={}", uid, e);
       throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-          "Failed to fetch user profile");
+          "Failed to fetch user profile", e);
     }
 
     if (userRecord == null) {
