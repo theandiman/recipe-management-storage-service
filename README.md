@@ -4,7 +4,7 @@
 [![Sonar Violations](https://img.shields.io/sonar/violations/theandiman_recipe-management-storage-service?server=https://sonarcloud.io)](https://sonarcloud.io/summary/new_code?id=theandiman_recipe-management-storage-service)
 [![Known Vulnerabilities](https://snyk.io/test/github/theandiman/recipe-management-storage-service/badge.svg)](https://snyk.io/test/github/theandiman/recipe-management-storage-service)
 
-# Recipe Storage Service
+# Recipe Management Service
 
 A Spring Boot microservice for persisting and managing recipe data using Google Cloud Firestore.
 
@@ -56,7 +56,7 @@ The service integrates with [Honeycomb](https://www.honeycomb.io/) for centraliz
 
    # Start with agent
    java -javaagent:opentelemetry-javaagent.jar \
-        -jar target/recipe-storage-service-0.0.1-SNAPSHOT.jar
+        -jar target/recipe-management-service-0.0.1-SNAPSHOT.jar
    ```
 
 ### Production Deployment
@@ -67,7 +67,7 @@ The OpenTelemetry Java agent is automatically included in the Docker image and c
 # In your deployment configuration
 environment:
   - HONEYCOMB_API_KEY=your_production_api_key
-  - OTEL_SERVICE_NAME=recipe-storage-service
+  - OTEL_SERVICE_NAME=recipe-management-service
   - OTEL_SERVICE_VERSION=0.0.1-SNAPSHOT
   - SERVICE_VERSION=0.0.1-SNAPSHOT  # Optional: override default version
 ```
@@ -75,7 +75,7 @@ environment:
 ### Viewing Traces & Metrics
 
 - **Honeycomb UI**: https://ui.honeycomb.io/
-- **Service Dashboard**: Filter by `service.name=recipe-storage-service`
+- **Service Dashboard**: Filter by `service.name=recipe-management-service`
 - **Trace Correlation**: All logs include `trace_id` and `span_id` for correlation
 
 ## Features
@@ -261,18 +261,18 @@ See `cloudbuild.yaml` for full CI/CD configuration.
 
 ```bash
 # Build Docker image
-docker build -t recipe-storage-service .
+docker build -t recipe-management-service .
 
 # Tag for GCP Artifact Registry
-docker tag recipe-storage-service \
-  europe-west2-docker.pkg.dev/PROJECT_ID/recipe-storage/recipe-storage-service:latest
+docker tag recipe-management-service \
+  europe-west2-docker.pkg.dev/PROJECT_ID/recipe-management/recipe-management-service:latest
 
 # Push to registry
-docker push europe-west2-docker.pkg.dev/PROJECT_ID/recipe-storage/recipe-storage-service:latest
+docker push europe-west2-docker.pkg.dev/PROJECT_ID/recipe-management/recipe-management-service:latest
 
 # Deploy to Cloud Run
-gcloud run deploy recipe-storage-service \
-  --image europe-west2-docker.pkg.dev/PROJECT_ID/recipe-storage/recipe-storage-service:latest \
+gcloud run deploy recipe-management-service \
+  --image europe-west2-docker.pkg.dev/PROJECT_ID/recipe-management/recipe-management-service:latest \
   --region europe-west2 \
   --platform managed
 ```
@@ -295,7 +295,7 @@ The service uses Firebase Authentication with JWT tokens:
 ## Project Structure
 
 ```
-recipe-storage-service/
+recipe-management-service/
 ├── src/main/java/com/recipe/storage/
 │   ├── config/
 │   │   ├── CorsConfig.java           # CORS configuration
@@ -329,7 +329,7 @@ recipe-storage-service/
 
 **Solution:** Ensure Cloud Run service allows unauthenticated access (Firebase Auth handles authentication at application level):
 ```bash
-gcloud run services add-iam-policy-binding recipe-storage-service \
+gcloud run services add-iam-policy-binding recipe-management-service \
   --region=europe-west2 \
   --member="allUsers" \
   --role="roles/run.invoker"
