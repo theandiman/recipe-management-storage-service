@@ -246,18 +246,24 @@ public class FollowService {
 
       QuerySnapshot snapshot = query.get().get();
 
+      List<QueryDocumentSnapshot> followDocs = snapshot.getDocuments();
       List<FollowUserResponse> users = new ArrayList<>();
-      for (QueryDocumentSnapshot doc : snapshot.getDocuments()) {
-        String userId = doc.getId();
-        DocumentSnapshot userDoc = firestore.collection(usersCollection)
-            .document(userId).get().get();
-        String displayName = userDoc.exists() ? userDoc.getString("displayName") : null;
-        String photoUrl = userDoc.exists() ? userDoc.getString("avatarUrl") : null;
-        users.add(FollowUserResponse.builder()
-            .uid(userId)
-            .displayName(displayName)
-            .photoUrl(photoUrl)
-            .build());
+      if (!followDocs.isEmpty()) {
+        DocumentReference[] userRefs = followDocs.stream()
+            .map(doc -> firestore.collection(usersCollection).document(doc.getId()))
+            .toArray(DocumentReference[]::new);
+        List<DocumentSnapshot> userDocs = firestore.getAll(userRefs).get();
+        for (int i = 0; i < followDocs.size(); i++) {
+          String userId = followDocs.get(i).getId();
+          DocumentSnapshot userDoc = userDocs.get(i);
+          String displayName = userDoc.exists() ? userDoc.getString("displayName") : null;
+          String photoUrl = userDoc.exists() ? userDoc.getString("avatarUrl") : null;
+          users.add(FollowUserResponse.builder()
+              .uid(userId)
+              .displayName(displayName)
+              .photoUrl(photoUrl)
+              .build());
+        }
       }
 
       String nextToken = encodeFollowPageToken(snapshot);

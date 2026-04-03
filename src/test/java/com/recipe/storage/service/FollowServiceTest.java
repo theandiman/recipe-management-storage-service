@@ -580,15 +580,16 @@ class FollowServiceTest {
         when(snapshot.isEmpty()).thenReturn(false);
         when(snapshot.getDocuments()).thenReturn(List.of(followerDoc));
 
-        // Stub user profile lookup
+        // Stub batch user profile lookup via getAll
         CollectionReference usersCol = mock(CollectionReference.class);
         DocumentReference followerUserDocRef = mock(DocumentReference.class);
-        ApiFuture<DocumentSnapshot> userDocFuture = mock(ApiFuture.class);
-        DocumentSnapshot followerUserDoc = mock(DocumentSnapshot.class);
         when(firestore.collection("users")).thenReturn(usersCol);
         when(usersCol.document(followerUid)).thenReturn(followerUserDocRef);
-        when(followerUserDocRef.get()).thenReturn(userDocFuture);
-        when(userDocFuture.get()).thenReturn(followerUserDoc);
+
+        ApiFuture<List<DocumentSnapshot>> getAllFuture = mock(ApiFuture.class);
+        DocumentSnapshot followerUserDoc = mock(DocumentSnapshot.class);
+        when(firestore.getAll(any(DocumentReference[].class))).thenReturn(getAllFuture);
+        when(getAllFuture.get()).thenReturn(List.of(followerUserDoc));
         when(followerUserDoc.exists()).thenReturn(true);
         when(followerUserDoc.getString("displayName")).thenReturn("Alice");
         when(followerUserDoc.getString("avatarUrl")).thenReturn("https://example.com/alice.jpg");
@@ -638,12 +639,13 @@ class FollowServiceTest {
 
         CollectionReference usersCol = mock(CollectionReference.class);
         DocumentReference followedUserDocRef = mock(DocumentReference.class);
-        ApiFuture<DocumentSnapshot> userDocFuture = mock(ApiFuture.class);
-        DocumentSnapshot followedUserDoc = mock(DocumentSnapshot.class);
         when(firestore.collection("users")).thenReturn(usersCol);
         when(usersCol.document(followedUid)).thenReturn(followedUserDocRef);
-        when(followedUserDocRef.get()).thenReturn(userDocFuture);
-        when(userDocFuture.get()).thenReturn(followedUserDoc);
+
+        ApiFuture<List<DocumentSnapshot>> getAllFuture = mock(ApiFuture.class);
+        DocumentSnapshot followedUserDoc = mock(DocumentSnapshot.class);
+        when(firestore.getAll(any(DocumentReference[].class))).thenReturn(getAllFuture);
+        when(getAllFuture.get()).thenReturn(List.of(followedUserDoc));
         when(followedUserDoc.exists()).thenReturn(true);
         when(followedUserDoc.getString("displayName")).thenReturn("Bob");
         when(followedUserDoc.getString("avatarUrl")).thenReturn(null);
@@ -721,12 +723,13 @@ class FollowServiceTest {
         // User profile doc does not exist
         CollectionReference usersCol = mock(CollectionReference.class);
         DocumentReference followerUserDocRef = mock(DocumentReference.class);
-        ApiFuture<DocumentSnapshot> userDocFuture = mock(ApiFuture.class);
-        DocumentSnapshot missingUserDoc = mock(DocumentSnapshot.class);
         when(firestore.collection("users")).thenReturn(usersCol);
         when(usersCol.document(followerUid)).thenReturn(followerUserDocRef);
-        when(followerUserDocRef.get()).thenReturn(userDocFuture);
-        when(userDocFuture.get()).thenReturn(missingUserDoc);
+
+        ApiFuture<List<DocumentSnapshot>> getAllFuture = mock(ApiFuture.class);
+        DocumentSnapshot missingUserDoc = mock(DocumentSnapshot.class);
+        when(firestore.getAll(any(DocumentReference[].class))).thenReturn(getAllFuture);
+        when(getAllFuture.get()).thenReturn(List.of(missingUserDoc));
         when(missingUserDoc.exists()).thenReturn(false);
 
         PagedFollowResponse result = followService.getFollowers(ownerUid, null, 20);
