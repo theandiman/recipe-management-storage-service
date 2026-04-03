@@ -4,21 +4,27 @@ import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.CollectionReference;
 import com.google.cloud.firestore.DocumentReference;
 import com.google.cloud.firestore.DocumentSnapshot;
+import com.google.cloud.firestore.FieldValue;
 import com.google.cloud.firestore.Firestore;
+import com.google.cloud.firestore.SetOptions;
 import com.google.cloud.firestore.Transaction;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -66,7 +72,7 @@ class FollowServiceTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void followUser_NewFollow_RunsTransaction() throws Exception {
+    void followUser_NewFollow_RunsTransactionAndUpdatesCounters() throws Exception {
         String followerId = "follower1";
         String followedId = "followed2";
 
@@ -99,9 +105,10 @@ class FollowServiceTest {
         when(mockTx.set(any(), any())).thenReturn(mockTx);
         when(mockTx.set(any(), any(), any())).thenReturn(mockTx);
 
-        ApiFuture<Void> txResult = mock(ApiFuture.class);
+        ApiFuture<Boolean> txResult = mock(ApiFuture.class);
+        when(txResult.get()).thenReturn(Boolean.TRUE);
         when(firestore.runTransaction(any(Transaction.Function.class))).thenAnswer(invocation -> {
-            Transaction.Function<Void> fn = invocation.getArgument(0);
+            Transaction.Function<Boolean> fn = invocation.getArgument(0);
             fn.updateCallback(mockTx);
             return txResult;
         });
@@ -109,7 +116,26 @@ class FollowServiceTest {
         followService.followUser(followerId, followedId);
 
         verify(txResult).get();
+        // Verify follow doc was created
         verify(mockTx).set(eq(followDocRef), any());
+
+        // Verify followerCount and followingCount were incremented on the correct documents
+        ArgumentCaptor<Map> followerMapCaptor = ArgumentCaptor.forClass(Map.class);
+        ArgumentCaptor<Map> followedMapCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(mockTx).set(eq(followerUserRef), followerMapCaptor.capture(),
+                any(SetOptions.class));
+        verify(mockTx).set(eq(followedUserRef), followedMapCaptor.capture(),
+                any(SetOptions.class));
+
+        Map<?, ?> followerMap = followerMapCaptor.getValue();
+        assertTrue(followerMap.containsKey("followingCount"),
+                "follower profile must have followingCount updated");
+        assertInstanceOf(FieldValue.class, followerMap.get("followingCount"));
+
+        Map<?, ?> followedMap = followedMapCaptor.getValue();
+        assertTrue(followedMap.containsKey("followerCount"),
+                "followed profile must have followerCount updated");
+        assertInstanceOf(FieldValue.class, followedMap.get("followerCount"));
     }
 
     @Test
@@ -139,9 +165,10 @@ class FollowServiceTest {
         when(mockTx.get(followDocRef)).thenReturn(snapFuture);
         when(snapFuture.get()).thenReturn(followSnapshot);
 
-        ApiFuture<Void> txResult = mock(ApiFuture.class);
+        ApiFuture<Boolean> txResult = mock(ApiFuture.class);
+        when(txResult.get()).thenReturn(Boolean.FALSE);
         when(firestore.runTransaction(any(Transaction.Function.class))).thenAnswer(invocation -> {
-            Transaction.Function<Void> fn = invocation.getArgument(0);
+            Transaction.Function<Boolean> fn = invocation.getArgument(0);
             fn.updateCallback(mockTx);
             return txResult;
         });
@@ -173,7 +200,7 @@ class FollowServiceTest {
         CollectionReference usersCol = mock(CollectionReference.class);
         when(firestore.collection("users")).thenReturn(usersCol);
 
-        ApiFuture<Void> txResult = mock(ApiFuture.class);
+        ApiFuture<Boolean> txResult = mock(ApiFuture.class);
         when(firestore.runTransaction(any(Transaction.Function.class))).thenReturn(txResult);
         when(txResult.get()).thenThrow(new InterruptedException("interrupted"));
 
@@ -201,7 +228,7 @@ class FollowServiceTest {
         CollectionReference usersCol = mock(CollectionReference.class);
         when(firestore.collection("users")).thenReturn(usersCol);
 
-        ApiFuture<Void> txResult = mock(ApiFuture.class);
+        ApiFuture<Boolean> txResult = mock(ApiFuture.class);
         when(firestore.runTransaction(any(Transaction.Function.class))).thenReturn(txResult);
         when(txResult.get()).thenThrow(new ExecutionException("error", new RuntimeException()));
 
@@ -234,7 +261,7 @@ class FollowServiceTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void unfollowUser_ExistingFollow_DeletesAndDecrementsCount() throws Exception {
+    void unfollowUser_ExistingFollow_DeletesAndDecrementsCounters() throws Exception {
         String followerId = "follower1";
         String followedId = "followed2";
 
@@ -264,9 +291,10 @@ class FollowServiceTest {
         when(mockTx.delete(followDocRef)).thenReturn(mockTx);
         when(mockTx.set(any(), any(), any())).thenReturn(mockTx);
 
-        ApiFuture<Void> txResult = mock(ApiFuture.class);
+        ApiFuture<Boolean> txResult = mock(ApiFuture.class);
+        when(txResult.get()).thenReturn(Boolean.TRUE);
         when(firestore.runTransaction(any(Transaction.Function.class))).thenAnswer(invocation -> {
-            Transaction.Function<Void> fn = invocation.getArgument(0);
+            Transaction.Function<Boolean> fn = invocation.getArgument(0);
             fn.updateCallback(mockTx);
             return txResult;
         });
@@ -274,7 +302,26 @@ class FollowServiceTest {
         followService.unfollowUser(followerId, followedId);
 
         verify(txResult).get();
+        // Verify follow doc was deleted
         verify(mockTx).delete(followDocRef);
+
+        // Verify followerCount and followingCount were decremented on the correct documents
+        ArgumentCaptor<Map> followerMapCaptor = ArgumentCaptor.forClass(Map.class);
+        ArgumentCaptor<Map> followedMapCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(mockTx).set(eq(followerUserRef), followerMapCaptor.capture(),
+                any(SetOptions.class));
+        verify(mockTx).set(eq(followedUserRef), followedMapCaptor.capture(),
+                any(SetOptions.class));
+
+        Map<?, ?> followerMap = followerMapCaptor.getValue();
+        assertTrue(followerMap.containsKey("followingCount"),
+                "follower profile must have followingCount decremented");
+        assertInstanceOf(FieldValue.class, followerMap.get("followingCount"));
+
+        Map<?, ?> followedMap = followedMapCaptor.getValue();
+        assertTrue(followedMap.containsKey("followerCount"),
+                "followed profile must have followerCount decremented");
+        assertInstanceOf(FieldValue.class, followedMap.get("followerCount"));
     }
 
     @Test
@@ -303,9 +350,10 @@ class FollowServiceTest {
         when(mockTx.get(followDocRef)).thenReturn(snapFuture);
         when(snapFuture.get()).thenReturn(followSnapshot);
 
-        ApiFuture<Void> txResult = mock(ApiFuture.class);
+        ApiFuture<Boolean> txResult = mock(ApiFuture.class);
+        when(txResult.get()).thenReturn(Boolean.FALSE);
         when(firestore.runTransaction(any(Transaction.Function.class))).thenAnswer(invocation -> {
-            Transaction.Function<Void> fn = invocation.getArgument(0);
+            Transaction.Function<Boolean> fn = invocation.getArgument(0);
             fn.updateCallback(mockTx);
             return txResult;
         });
@@ -337,7 +385,7 @@ class FollowServiceTest {
         CollectionReference usersCol = mock(CollectionReference.class);
         when(firestore.collection("users")).thenReturn(usersCol);
 
-        ApiFuture<Void> txResult = mock(ApiFuture.class);
+        ApiFuture<Boolean> txResult = mock(ApiFuture.class);
         when(firestore.runTransaction(any(Transaction.Function.class))).thenReturn(txResult);
         when(txResult.get()).thenThrow(new InterruptedException("interrupted"));
 
@@ -365,7 +413,7 @@ class FollowServiceTest {
         CollectionReference usersCol = mock(CollectionReference.class);
         when(firestore.collection("users")).thenReturn(usersCol);
 
-        ApiFuture<Void> txResult = mock(ApiFuture.class);
+        ApiFuture<Boolean> txResult = mock(ApiFuture.class);
         when(firestore.runTransaction(any(Transaction.Function.class))).thenReturn(txResult);
         when(txResult.get()).thenThrow(new ExecutionException("error", new RuntimeException()));
 

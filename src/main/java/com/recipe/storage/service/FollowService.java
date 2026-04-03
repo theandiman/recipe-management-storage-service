@@ -70,23 +70,24 @@ public class FollowService {
     DocumentReference followedUserRef = firestore.collection(usersCollection).document(followedId);
 
     try {
-      ApiFuture<Void> txFuture = firestore.runTransaction(
-          (Transaction.Function<Void>) transaction -> {
-            DocumentSnapshot followDoc = transaction.get(followDocRef).get();
-            if (!followDoc.exists()) {
-              transaction.set(followDocRef,
-                  Map.of("followedAt", FieldValue.serverTimestamp()));
-              transaction.set(followerUserRef,
-                  Map.of("followingCount", FieldValue.increment(1)), SetOptions.merge());
-              transaction.set(followedUserRef,
-                  Map.of("followerCount", FieldValue.increment(1)), SetOptions.merge());
-              log.info("User {} followed user {}", followerId, followedId);
-            } else {
-              log.info("User {} already follows user {} - no-op", followerId, followedId);
-            }
-            return null;
-          });
-      txFuture.get();
+      ApiFuture<Boolean> txFuture = firestore.runTransaction(transaction -> {
+        DocumentSnapshot followDoc = transaction.get(followDocRef).get();
+        if (!followDoc.exists()) {
+          transaction.set(followDocRef,
+              Map.of("followedAt", FieldValue.serverTimestamp()));
+          transaction.set(followerUserRef,
+              Map.of("followingCount", FieldValue.increment(1)), SetOptions.merge());
+          transaction.set(followedUserRef,
+              Map.of("followerCount", FieldValue.increment(1)), SetOptions.merge());
+          return true;
+        }
+        return false;
+      });
+      if (Boolean.TRUE.equals(txFuture.get())) {
+        log.info("User {} followed user {}", followerId, followedId);
+      } else {
+        log.info("User {} already follows user {} - no-op", followerId, followedId);
+      }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       log.error("Interrupted while following user {} -> {}", followerId, followedId, e);
@@ -131,22 +132,23 @@ public class FollowService {
     DocumentReference followedUserRef = firestore.collection(usersCollection).document(followedId);
 
     try {
-      ApiFuture<Void> txFuture = firestore.runTransaction(
-          (Transaction.Function<Void>) transaction -> {
-            DocumentSnapshot followDoc = transaction.get(followDocRef).get();
-            if (followDoc.exists()) {
-              transaction.delete(followDocRef);
-              transaction.set(followerUserRef,
-                  Map.of("followingCount", FieldValue.increment(-1)), SetOptions.merge());
-              transaction.set(followedUserRef,
-                  Map.of("followerCount", FieldValue.increment(-1)), SetOptions.merge());
-              log.info("User {} unfollowed user {}", followerId, followedId);
-            } else {
-              log.info("User {} does not follow user {} - no-op", followerId, followedId);
-            }
-            return null;
-          });
-      txFuture.get();
+      ApiFuture<Boolean> txFuture = firestore.runTransaction(transaction -> {
+        DocumentSnapshot followDoc = transaction.get(followDocRef).get();
+        if (followDoc.exists()) {
+          transaction.delete(followDocRef);
+          transaction.set(followerUserRef,
+              Map.of("followingCount", FieldValue.increment(-1)), SetOptions.merge());
+          transaction.set(followedUserRef,
+              Map.of("followerCount", FieldValue.increment(-1)), SetOptions.merge());
+          return true;
+        }
+        return false;
+      });
+      if (Boolean.TRUE.equals(txFuture.get())) {
+        log.info("User {} unfollowed user {}", followerId, followedId);
+      } else {
+        log.info("User {} does not follow user {} - no-op", followerId, followedId);
+      }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       log.error("Interrupted while unfollowing user {} -> {}", followerId, followedId, e);

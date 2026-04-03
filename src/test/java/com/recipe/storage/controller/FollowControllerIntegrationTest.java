@@ -40,7 +40,7 @@ class FollowControllerIntegrationTest {
     }
 
     @Test
-    void followUser_NoAuthHeader_ReturnsServiceUnavailable() throws Exception {
+    void followUser_NoFirestore_ReturnsServiceUnavailable() throws Exception {
         // Without Firestore configured the service returns 503.
         mockMvc.perform(post("/api/users/other-user/follow"))
                 .andExpect(status().isServiceUnavailable());
@@ -61,7 +61,7 @@ class FollowControllerIntegrationTest {
     }
 
     @Test
-    void unfollowUser_NoAuthHeader_ReturnsServiceUnavailable() throws Exception {
+    void unfollowUser_NoFirestore_ReturnsServiceUnavailable() throws Exception {
         mockMvc.perform(delete("/api/users/other-user/follow"))
                 .andExpect(status().isServiceUnavailable());
     }
