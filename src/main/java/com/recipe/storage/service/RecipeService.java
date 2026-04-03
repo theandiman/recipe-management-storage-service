@@ -11,6 +11,7 @@ import com.google.cloud.firestore.QuerySnapshot;
 import com.google.cloud.firestore.WriteResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
+import com.google.firebase.auth.UserRecord;
 import com.recipe.shared.model.NutritionalInfo;
 import com.recipe.shared.model.Recipe;
 import com.recipe.storage.dto.CreateRecipeRequest;
@@ -644,7 +645,8 @@ public class RecipeService {
       return null;
     }
     try {
-      return firebaseAuth.getUser(userId).getDisplayName();
+      UserRecord userRecord = firebaseAuth.getUser(userId);
+      return userRecord != null ? userRecord.getDisplayName() : null;
     } catch (FirebaseAuthException e) {
       log.warn("Failed to resolve display name for user {}: {}", userId, e.getMessage());
       return null;
