@@ -35,6 +35,7 @@ jobs:
     permissions:
       contents: write
       actions: write
+      id-token: write
     with:
       service_name: recipe-management-service
       artifact_registry_repository: recipe-management
