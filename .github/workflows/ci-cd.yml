@@ -31,7 +31,7 @@ jobs:
     name: Deploy
     needs: ci
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    uses: theandiman/recipe-management/.github/workflows/backend-java-cloud-run-cd.yml@2d6c963fd364bc373af4c91fdba3cd47b9996258
+    uses: theandiman/recipe-management/.github/workflows/backend-java-cloud-run-cd.yml@423066a799af0d4bbd5be9d21b00447a3ef14f53
     permissions:
       contents: write
       actions: write
@@ -40,8 +40,7 @@ jobs:
       service_name: recipe-management-service
       artifact_registry_repository: recipe-management
       use_wif: true
-      zap_rules: |
-        10049 IGNORE (Non-Storable Content - expected for auth-protected endpoints returning 401)
+      zap_rules: "10049\tIGNORE\t(Non-Storable Content - expected for auth-protected endpoints returning 401)"
     secrets:
       GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
       GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
