@@ -694,7 +694,8 @@ class FollowServiceTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void getFollowers_UserProfileNotFound_ReturnsNullFields() throws Exception {
+    void getFollowers_NullFollowedAtAndMissingProfile_ReturnsNullFieldsAndNoNextToken()
+            throws Exception {
         String ownerUid = "owner1";
         String followerUid = "deletedUser";
 
@@ -715,12 +716,13 @@ class FollowServiceTest {
         when(limitedQuery.get()).thenReturn(queryFuture);
         when(queryFuture.get()).thenReturn(snapshot);
 
+        // followedAt is null (e.g. missing field) -> next page token should be null
         when(followerDoc.getId()).thenReturn(followerUid);
         when(followerDoc.getTimestamp("followedAt")).thenReturn(null);
         when(snapshot.isEmpty()).thenReturn(false);
         when(snapshot.getDocuments()).thenReturn(List.of(followerDoc));
 
-        // User profile doc does not exist
+        // User profile doc does not exist -> displayName and photoUrl should be null
         CollectionReference usersCol = mock(CollectionReference.class);
         DocumentReference followerUserDocRef = mock(DocumentReference.class);
         when(firestore.collection("users")).thenReturn(usersCol);
