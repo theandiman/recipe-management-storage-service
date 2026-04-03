@@ -153,6 +153,132 @@ class UserProfileServiceTest {
     }
 
     @Test
+    void getUserProfile_FirestoreInterrupted_Throws503() throws ExecutionException, InterruptedException {
+        // Arrange
+        String uid = "user123";
+
+        CollectionReference usersCollection = mock(CollectionReference.class);
+        DocumentReference userDocRef = mock(DocumentReference.class);
+        @SuppressWarnings("unchecked")
+        ApiFuture<DocumentSnapshot> userFuture = mock(ApiFuture.class);
+
+        when(firestore.collection("users")).thenReturn(usersCollection);
+        when(usersCollection.document(uid)).thenReturn(userDocRef);
+        when(userDocRef.get()).thenReturn(userFuture);
+        when(userFuture.get()).thenThrow(new InterruptedException("interrupted"));
+
+        // Act & Assert
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> userProfileService.getUserProfile(uid));
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, exception.getStatusCode());
+    }
+
+    @Test
+    void getUserProfile_FirestoreExecutionException_Throws503() throws ExecutionException, InterruptedException {
+        // Arrange
+        String uid = "user123";
+
+        CollectionReference usersCollection = mock(CollectionReference.class);
+        DocumentReference userDocRef = mock(DocumentReference.class);
+        @SuppressWarnings("unchecked")
+        ApiFuture<DocumentSnapshot> userFuture = mock(ApiFuture.class);
+
+        when(firestore.collection("users")).thenReturn(usersCollection);
+        when(usersCollection.document(uid)).thenReturn(userDocRef);
+        when(userDocRef.get()).thenReturn(userFuture);
+        when(userFuture.get()).thenThrow(new ExecutionException("error", new RuntimeException()));
+
+        // Act & Assert
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> userProfileService.getUserProfile(uid));
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, exception.getStatusCode());
+    }
+
+    @Test
+    void countPublicRecipes_Interrupted_Throws503() throws ExecutionException, InterruptedException {
+        // Arrange
+        String uid = "user123";
+
+        CollectionReference usersCollection = mock(CollectionReference.class);
+        DocumentReference userDocRef = mock(DocumentReference.class);
+        @SuppressWarnings("unchecked")
+        ApiFuture<DocumentSnapshot> userFuture = mock(ApiFuture.class);
+        DocumentSnapshot userSnapshot = mock(DocumentSnapshot.class);
+
+        when(firestore.collection("users")).thenReturn(usersCollection);
+        when(usersCollection.document(uid)).thenReturn(userDocRef);
+        when(userDocRef.get()).thenReturn(userFuture);
+        when(userFuture.get()).thenReturn(userSnapshot);
+        when(userSnapshot.exists()).thenReturn(true);
+        when(userSnapshot.getString("displayName")).thenReturn("Andy");
+        when(userSnapshot.getString("bio")).thenReturn(null);
+        when(userSnapshot.getString("avatarUrl")).thenReturn(null);
+
+        CollectionReference recipesCollection = mock(CollectionReference.class);
+        Query uidQuery = mock(Query.class);
+        Query publicQuery = mock(Query.class);
+        AggregateQuery aggregateQuery = mock(AggregateQuery.class);
+        @SuppressWarnings("unchecked")
+        ApiFuture<AggregateQuerySnapshot> countFuture = mock(ApiFuture.class);
+
+        when(firestore.collection("recipes")).thenReturn(recipesCollection);
+        when(recipesCollection.whereEqualTo("userId", uid)).thenReturn(uidQuery);
+        when(uidQuery.whereEqualTo("isPublic", true)).thenReturn(publicQuery);
+        when(publicQuery.count()).thenReturn(aggregateQuery);
+        when(aggregateQuery.get()).thenReturn(countFuture);
+        when(countFuture.get()).thenThrow(new InterruptedException("interrupted"));
+
+        // Act & Assert
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> userProfileService.getUserProfile(uid));
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, exception.getStatusCode());
+    }
+
+    @Test
+    void countPublicRecipes_ExecutionException_Throws503() throws ExecutionException, InterruptedException {
+        // Arrange
+        String uid = "user123";
+
+        CollectionReference usersCollection = mock(CollectionReference.class);
+        DocumentReference userDocRef = mock(DocumentReference.class);
+        @SuppressWarnings("unchecked")
+        ApiFuture<DocumentSnapshot> userFuture = mock(ApiFuture.class);
+        DocumentSnapshot userSnapshot = mock(DocumentSnapshot.class);
+
+        when(firestore.collection("users")).thenReturn(usersCollection);
+        when(usersCollection.document(uid)).thenReturn(userDocRef);
+        when(userDocRef.get()).thenReturn(userFuture);
+        when(userFuture.get()).thenReturn(userSnapshot);
+        when(userSnapshot.exists()).thenReturn(true);
+        when(userSnapshot.getString("displayName")).thenReturn("Andy");
+        when(userSnapshot.getString("bio")).thenReturn(null);
+        when(userSnapshot.getString("avatarUrl")).thenReturn(null);
+
+        CollectionReference recipesCollection = mock(CollectionReference.class);
+        Query uidQuery = mock(Query.class);
+        Query publicQuery = mock(Query.class);
+        AggregateQuery aggregateQuery = mock(AggregateQuery.class);
+        @SuppressWarnings("unchecked")
+        ApiFuture<AggregateQuerySnapshot> countFuture = mock(ApiFuture.class);
+
+        when(firestore.collection("recipes")).thenReturn(recipesCollection);
+        when(recipesCollection.whereEqualTo("userId", uid)).thenReturn(uidQuery);
+        when(uidQuery.whereEqualTo("isPublic", true)).thenReturn(publicQuery);
+        when(publicQuery.count()).thenReturn(aggregateQuery);
+        when(aggregateQuery.get()).thenReturn(countFuture);
+        when(countFuture.get()).thenThrow(new ExecutionException("error", new RuntimeException()));
+
+        // Act & Assert
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> userProfileService.getUserProfile(uid));
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, exception.getStatusCode());
+    }
+
+    @Test
     void getUserProfile_ZeroPublicRecipes_ReturnsZeroCount()
             throws ExecutionException, InterruptedException {
         // Arrange
