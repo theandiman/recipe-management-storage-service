@@ -1,9 +1,15 @@
 package com.recipe.storage.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.api.core.ApiFuture;
+import com.google.cloud.firestore.CollectionReference;
+import com.google.cloud.firestore.DocumentReference;
+import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.cloud.firestore.Firestore;
 import com.google.firebase.FirebaseApp;
+import com.google.firebase.auth.FirebaseAuth;
 import com.recipe.storage.dto.CreateRecipeRequest;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -15,10 +21,13 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -65,9 +74,9 @@ class RecipeSharingIntegrationTest {
         }
 
         @Test
-        void getPublicRecipe_NoFirestore_ReturnsNotFound() throws Exception {
+        void getPublicRecipe_NoFirestore_ReturnsServiceUnavailable() throws Exception {
                 mockMvc.perform(get("/api/recipes/some-recipe-id/public"))
-                                .andExpect(status().isNotFound());
+                                .andExpect(status().isServiceUnavailable());
         }
 }
 
@@ -85,13 +94,30 @@ class RecipeSharingAuthEnabledIntegrationTest {
         @MockBean
         private Firestore firestore;
 
+        @MockBean
+        private FirebaseAuth firebaseAuth;
+
         @Autowired
         private MockMvc mockMvc;
 
+        @BeforeEach
+        @SuppressWarnings("unchecked")
+        void setUp() throws Exception {
+                CollectionReference colRef = mock(CollectionReference.class);
+                DocumentReference docRef = mock(DocumentReference.class);
+                ApiFuture<DocumentSnapshot> future = mock(ApiFuture.class);
+                DocumentSnapshot snapshot = mock(DocumentSnapshot.class);
+                when(firestore.collection(anyString())).thenReturn(colRef);
+                when(colRef.document(anyString())).thenReturn(docRef);
+                when(docRef.get()).thenReturn(future);
+                when(future.get()).thenReturn(snapshot);
+                when(snapshot.exists()).thenReturn(false);
+        }
+
         @Test
         void getPublicRecipe_NoAuthHeader_IsAllowed_WhenAuthEnabled() throws Exception {
-                // Endpoint should be reachable without Authorization header even when auth is enabled.
-                // Without Firestore the service returns 404 (not 401/403).
+                // Public endpoint must be reachable without Authorization header
+                // even when auth is enabled (no 401/403 returned).
                 mockMvc.perform(get("/api/recipes/some-recipe-id/public"))
                                 .andExpect(status().isNotFound());
         }
