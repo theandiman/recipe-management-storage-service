@@ -254,9 +254,9 @@ steps:
 
 # Substitutions for different environments
 substitutions:
-  _SERVICE_NAME: 'recipe-storage-service'
+  _SERVICE_NAME: 'recipe-management-service'
   _REGION: 'europe-west2'
-  _ARTIFACT_REGISTRY_REPO: 'recipe-storage'
+  _ARTIFACT_REGISTRY_REPO: 'recipe-management'
 
 # Use faster machine type for builds
 options:

@@ -13,10 +13,10 @@
     </parent>
 
     <groupId>com.recipe</groupId>
-    <artifactId>recipe-storage-service</artifactId>
+    <artifactId>recipe-management-service</artifactId>
     <version>0.0.32-SNAPSHOT</version>
-    <name>recipe-storage-service</name>
-    <description>Recipe storage service using Spring Boot and Firestore</description>
+    <name>recipe-management-service</name>
+    <description>Recipe management service using Spring Boot and Firestore</description>
 
     <properties>
         <java.version>21</java.version>
