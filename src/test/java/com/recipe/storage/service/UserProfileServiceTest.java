@@ -153,7 +153,7 @@ class UserProfileServiceTest {
     }
 
     @Test
-    void getUserProfile_FirestoreInterrupted_Throws503() throws ExecutionException, InterruptedException {
+    void getUserProfile_UserDocumentInterrupted_Throws503() throws ExecutionException, InterruptedException {
         // Arrange
         String uid = "user123";
 
@@ -175,7 +175,7 @@ class UserProfileServiceTest {
     }
 
     @Test
-    void getUserProfile_FirestoreExecutionException_Throws503() throws ExecutionException, InterruptedException {
+    void getUserProfile_UserDocumentExecutionException_Throws503() throws ExecutionException, InterruptedException {
         // Arrange
         String uid = "user123";
 
@@ -197,7 +197,7 @@ class UserProfileServiceTest {
     }
 
     @Test
-    void countPublicRecipes_Interrupted_Throws503() throws ExecutionException, InterruptedException {
+    void getUserProfile_CountPublicRecipesInterrupted_Throws503() throws ExecutionException, InterruptedException {
         // Arrange
         String uid = "user123";
 
@@ -238,7 +238,7 @@ class UserProfileServiceTest {
     }
 
     @Test
-    void countPublicRecipes_ExecutionException_Throws503() throws ExecutionException, InterruptedException {
+    void getUserProfile_CountPublicRecipesExecutionException_Throws503() throws ExecutionException, InterruptedException {
         // Arrange
         String uid = "user123";
 
