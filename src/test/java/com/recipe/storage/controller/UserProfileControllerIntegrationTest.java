@@ -25,17 +25,17 @@ class UserProfileControllerIntegrationTest {
     @Test
     void getUserProfile_NoAuthHeader_IsAllowed() throws Exception {
         // Endpoint is public: no Authorization header needed.
-        // Without Firestore the service returns 404.
+        // Without Firestore configured the service returns 503.
         mockMvc.perform(get("/api/users/some-uid/profile"))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isServiceUnavailable());
     }
 
     @Test
     void getUserProfile_WithAuthHeader_IsAllowed() throws Exception {
         // Even with an auth header the endpoint remains accessible (no token required).
-        // Without Firestore the service returns 404.
+        // Without Firestore configured the service returns 503.
         mockMvc.perform(get("/api/users/some-uid/profile")
                 .header("Authorization", "Bearer some-token"))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isServiceUnavailable());
     }
 }

@@ -117,7 +117,7 @@ class UserProfileServiceTest {
     }
 
     @Test
-    void getUserProfile_NullFirestore_Throws404() {
+    void getUserProfile_NullFirestore_Throws503() {
         // Arrange
         UserProfileService serviceWithoutFirestore = new UserProfileService();
         ReflectionTestUtils.setField(serviceWithoutFirestore, "usersCollection", "users");
@@ -127,7 +127,7 @@ class UserProfileServiceTest {
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
                 () -> serviceWithoutFirestore.getUserProfile("uid123"));
-        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, exception.getStatusCode());
     }
 
     @Test

@@ -35,7 +35,8 @@ public class UserProfileService {
    *
    * @param uid The Firebase user ID
    * @return The public profile response
-   * @throws ResponseStatusException 404 if the user does not exist, 503 if Firestore is not configured
+   * @throws ResponseStatusException 404 if the user does not exist,
+   *     503 if Firestore is not configured or unavailable
    */
   public UserProfileResponse getUserProfile(String uid) {
     if (firestore == null) {
@@ -75,10 +76,12 @@ public class UserProfileService {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       log.error("Interrupted while fetching user profile from Firestore", e);
-      throw new RuntimeException("Failed to fetch user profile", e);
+      throw new ResponseStatusException(
+          HttpStatus.SERVICE_UNAVAILABLE, "User profile service unavailable", e);
     } catch (ExecutionException e) {
       log.error("Error fetching user profile from Firestore", e);
-      throw new RuntimeException("Failed to fetch user profile", e);
+      throw new ResponseStatusException(
+          HttpStatus.SERVICE_UNAVAILABLE, "User profile service unavailable", e);
     }
   }
 
