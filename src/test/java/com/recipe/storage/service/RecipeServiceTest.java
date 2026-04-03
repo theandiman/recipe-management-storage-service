@@ -779,6 +779,90 @@ class RecipeServiceTest {
                 .build();
     }
 
+    // ── getUserRecipes ───────────────────────────────────────────────────────
+
+    @Test
+    void getUserRecipes_WithFirestore_PopulatesSavedStatus()
+            throws ExecutionException, InterruptedException {
+        // Arrange
+        String userId = "user123";
+        String recipeId = "recipe123";
+
+        // Mock recipe collection query
+        CollectionReference recipesRef = mock(CollectionReference.class);
+        when(firestore.collection("recipes")).thenReturn(recipesRef);
+        Query userQuery = mock(Query.class);
+        when(recipesRef.whereEqualTo("userId", userId)).thenReturn(userQuery);
+
+        @SuppressWarnings("unchecked")
+        ApiFuture<QuerySnapshot> queryFuture = mock(ApiFuture.class);
+        QuerySnapshot querySnapshot = mock(QuerySnapshot.class);
+        when(userQuery.get()).thenReturn(queryFuture);
+        when(queryFuture.get()).thenReturn(querySnapshot);
+
+        com.google.cloud.firestore.QueryDocumentSnapshot docSnap =
+                mock(com.google.cloud.firestore.QueryDocumentSnapshot.class);
+        Recipe recipe = Recipe.builder()
+                .id(recipeId).userId(userId).recipeName("Pasta").publicRecipe(false)
+                .createdAt(Instant.now()).updatedAt(Instant.now()).build();
+        when(docSnap.toObject(Recipe.class)).thenReturn(recipe);
+        when(querySnapshot.getDocuments()).thenReturn(List.of(docSnap));
+
+        // Mock bookmark batch-get
+        CollectionReference savedTopRef = mock(CollectionReference.class);
+        DocumentReference savedUserDocRef = mock(DocumentReference.class);
+        CollectionReference savedSubRef = mock(CollectionReference.class);
+        DocumentReference savedDocRef = mock(DocumentReference.class);
+        when(firestore.collection("savedRecipes")).thenReturn(savedTopRef);
+        when(savedTopRef.document(userId)).thenReturn(savedUserDocRef);
+        when(savedUserDocRef.collection("recipes")).thenReturn(savedSubRef);
+        when(savedSubRef.document(recipeId)).thenReturn(savedDocRef);
+
+        com.google.cloud.firestore.DocumentSnapshot bookmarkSnap =
+                mock(com.google.cloud.firestore.DocumentSnapshot.class);
+        when(bookmarkSnap.exists()).thenReturn(true);
+        @SuppressWarnings("unchecked")
+        ApiFuture<List<com.google.cloud.firestore.DocumentSnapshot>> getAllFuture =
+                mock(ApiFuture.class);
+        when(getAllFuture.get()).thenReturn(List.of(bookmarkSnap));
+        when(firestore.getAll(any(DocumentReference[].class))).thenReturn(getAllFuture);
+
+        // Act
+        List<RecipeResponse> recipes = recipeService.getUserRecipes(userId);
+
+        // Assert
+        assertNotNull(recipes);
+        assertEquals(1, recipes.size());
+        assertTrue(recipes.get(0).isSavedByCurrentUser());
+    }
+
+    @Test
+    void getUserRecipes_WithFirestore_EmptyRecipes_SkipsBatchCheck()
+            throws ExecutionException, InterruptedException {
+        // Arrange
+        String userId = "user123";
+
+        CollectionReference recipesRef = mock(CollectionReference.class);
+        when(firestore.collection("recipes")).thenReturn(recipesRef);
+        Query userQuery = mock(Query.class);
+        when(recipesRef.whereEqualTo("userId", userId)).thenReturn(userQuery);
+
+        @SuppressWarnings("unchecked")
+        ApiFuture<QuerySnapshot> queryFuture = mock(ApiFuture.class);
+        QuerySnapshot querySnapshot = mock(QuerySnapshot.class);
+        when(userQuery.get()).thenReturn(queryFuture);
+        when(queryFuture.get()).thenReturn(querySnapshot);
+        when(querySnapshot.getDocuments()).thenReturn(List.of());
+
+        // Act
+        List<RecipeResponse> recipes = recipeService.getUserRecipes(userId);
+
+        // Assert
+        assertNotNull(recipes);
+        assertTrue(recipes.isEmpty());
+        verify(firestore, never()).getAll(any(DocumentReference[].class));
+    }
+
     // ── saveRecipeForUser ────────────────────────────────────────────────────
 
     @Test

@@ -808,7 +808,11 @@ public class RecipeService {
       log.info("Recipe {} saved by user {}", recipeId, userId);
     } catch (ResponseStatusException e) {
       throw e;
-    } catch (InterruptedException | ExecutionException e) {
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      log.error("Error saving recipe bookmark for recipe {} user {}", recipeId, userId, e);
+      throw new RuntimeException("Failed to save recipe", e);
+    } catch (ExecutionException e) {
       log.error("Error saving recipe bookmark for recipe {} user {}", recipeId, userId, e);
       throw new RuntimeException("Failed to save recipe", e);
     }
@@ -839,7 +843,11 @@ public class RecipeService {
       savedDocRef.delete().get();
 
       log.info("Recipe {} unsaved by user {}", recipeId, userId);
-    } catch (InterruptedException | ExecutionException e) {
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      log.error("Error unsaving recipe bookmark for recipe {} user {}", recipeId, userId, e);
+      throw new RuntimeException("Failed to unsave recipe", e);
+    } catch (ExecutionException e) {
       log.error("Error unsaving recipe bookmark for recipe {} user {}", recipeId, userId, e);
       throw new RuntimeException("Failed to unsave recipe", e);
     }
@@ -897,12 +905,9 @@ public class RecipeService {
       QuerySnapshot querySnapshot = pagedQuery.get().get();
 
       List<RecipeResponse> recipes = new ArrayList<>();
-      List<String> recipeIds = new ArrayList<>();
       List<DocumentReference> recipeRefs = new ArrayList<>();
       for (DocumentSnapshot savedDoc : querySnapshot.getDocuments()) {
-        String recipeId = savedDoc.getId();
-        recipeIds.add(recipeId);
-        recipeRefs.add(firestore.collection(recipesCollection).document(recipeId));
+        recipeRefs.add(firestore.collection(recipesCollection).document(savedDoc.getId()));
       }
 
       if (!recipeRefs.isEmpty()) {
@@ -910,22 +915,16 @@ public class RecipeService {
             .getAll(recipeRefs.toArray(new DocumentReference[0]))
             .get();
 
-        for (int i = 0; i < recipeDocs.size(); i++) {
-          String recipeId = recipeIds.get(i);
-          try {
-            DocumentSnapshot recipeDoc = recipeDocs.get(i);
-            if (recipeDoc.exists()) {
-              Recipe recipe = recipeDoc.toObject(Recipe.class);
-              // Only include recipes accessible to the user (public or owned by them)
-              if (recipe != null
-                  && (recipe.isPublicRecipe() || userId.equals(recipe.getUserId()))) {
-                RecipeResponse response = mapToResponse(recipe);
-                response.setSavedByCurrentUser(true);
-                recipes.add(response);
-              }
+        for (DocumentSnapshot recipeDoc : recipeDocs) {
+          if (recipeDoc.exists()) {
+            Recipe recipe = recipeDoc.toObject(Recipe.class);
+            // Only include recipes accessible to the user (public or owned by them)
+            if (recipe != null
+                && (recipe.isPublicRecipe() || userId.equals(recipe.getUserId()))) {
+              RecipeResponse response = mapToResponse(recipe);
+              response.setSavedByCurrentUser(true);
+              recipes.add(response);
             }
-          } catch (Exception e) {
-            log.warn("Failed to map recipe {} for saved list: {}", recipeId, e.getMessage());
           }
         }
       }
@@ -939,7 +938,11 @@ public class RecipeService {
           .totalCount(totalCount)
           .nextPageToken(nextToken)
           .build();
-    } catch (InterruptedException | ExecutionException e) {
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      log.error("Error fetching saved recipes for user {}", userId, e);
+      throw new RuntimeException("Failed to fetch saved recipes", e);
+    } catch (ExecutionException e) {
       log.error("Error fetching saved recipes for user {}", userId, e);
       throw new RuntimeException("Failed to fetch saved recipes", e);
     }
@@ -965,7 +968,12 @@ public class RecipeService {
           .document(recipeId)
           .get().get();
       return doc.exists();
-    } catch (InterruptedException | ExecutionException e) {
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      log.warn("Interrupted while checking saved status for recipe {} user {}: {}",
+          recipeId, userId, e.getMessage());
+      return false;
+    } catch (ExecutionException e) {
       log.warn("Failed to check saved status for recipe {} user {}: {}",
           recipeId, userId, e.getMessage());
       return false;
