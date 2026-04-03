@@ -93,10 +93,16 @@ public class UserProfileService {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       log.error("Interrupted while counting public recipes for user {}", uid, e);
-      return 0;
+      throw new ResponseStatusException(
+          HttpStatus.SERVICE_UNAVAILABLE,
+          "Failed to count public recipes",
+          e);
     } catch (ExecutionException e) {
       log.error("Error counting public recipes for user {}", uid, e);
-      return 0;
+      throw new ResponseStatusException(
+          HttpStatus.SERVICE_UNAVAILABLE,
+          "Failed to count public recipes",
+          e);
     }
   }
 }
