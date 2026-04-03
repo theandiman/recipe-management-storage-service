@@ -9,6 +9,9 @@ import com.google.cloud.firestore.Firestore;
 import com.google.cloud.firestore.Query;
 import com.google.cloud.firestore.QuerySnapshot;
 import com.google.cloud.firestore.WriteResult;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthException;
+import com.google.firebase.auth.UserRecord;
 import com.recipe.shared.model.NutritionalInfo;
 import com.recipe.shared.model.Recipe;
 import com.recipe.storage.dto.CreateRecipeRequest;
@@ -18,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -38,6 +42,9 @@ public class RecipeService {
 
   @Autowired(required = false)
   private Firestore firestore;
+
+  @Autowired(required = false)
+  private FirebaseAuth firebaseAuth;
 
   @Value("${firestore.collection.recipes}")
   private String recipesCollection;
@@ -290,9 +297,18 @@ public class RecipeService {
       QuerySnapshot querySnapshot = future.get();
 
       List<RecipeResponse> recipes = new ArrayList<>();
+      Map<String, String> displayNameCache = new HashMap<>();
       querySnapshot.getDocuments().forEach(doc -> {
         Recipe recipe = doc.toObject(Recipe.class);
-        recipes.add(mapToResponse(recipe));
+        RecipeResponse response = mapToResponse(recipe);
+        String uid = recipe.getUserId();
+        if (uid != null) {
+          if (!displayNameCache.containsKey(uid)) {
+            displayNameCache.put(uid, resolveDisplayName(uid));
+          }
+          response.setAuthorDisplayName(displayNameCache.get(uid));
+        }
+        recipes.add(response);
       });
 
       String nextPageToken = encodeNextPageToken(querySnapshot);
@@ -372,7 +388,8 @@ public class RecipeService {
   public RecipeResponse getPublicRecipe(String recipeId) {
     if (firestore == null) {
       log.warn("Firestore not configured - cannot fetch recipe");
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
+      throw new ResponseStatusException(
+          HttpStatus.SERVICE_UNAVAILABLE, "Recipe service unavailable");
     }
 
     try {
@@ -398,7 +415,9 @@ public class RecipeService {
       }
 
       log.info("Retrieved public recipe {}", recipeId);
-      return mapToResponse(recipe);
+      RecipeResponse response = mapToResponse(recipe);
+      response.setAuthorDisplayName(resolveDisplayName(recipe.getUserId()));
+      return response;
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       log.error("Interrupted while fetching public recipe from Firestore", e);
@@ -613,6 +632,25 @@ public class RecipeService {
         .dietaryRestrictions(recipe.getDietaryRestrictions())
         .isPublic(recipe.isPublicRecipe())
         .build();
+  }
+
+  /**
+   * Resolve a Firebase user's display name, returning null on failure.
+   *
+   * @param userId The Firebase user ID
+   * @return The display name, or null if lookup fails or auth is unavailable
+   */
+  private String resolveDisplayName(String userId) {
+    if (firebaseAuth == null || userId == null) {
+      return null;
+    }
+    try {
+      UserRecord userRecord = firebaseAuth.getUser(userId);
+      return userRecord != null ? userRecord.getDisplayName() : null;
+    } catch (FirebaseAuthException e) {
+      log.warn("Failed to resolve display name for user {}: {}", userId, e.getMessage());
+      return null;
+    }
   }
 
   /**

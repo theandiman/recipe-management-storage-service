@@ -14,8 +14,8 @@ import java.util.List;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -63,8 +63,8 @@ class RecipeSharingIntegrationTest {
         }
 
         @Test
-        void getPublicRecipe_NoFirestore_ReturnsNotFound() throws Exception {
+        void getPublicRecipe_NoFirestore_ReturnsServiceUnavailable() throws Exception {
                 mockMvc.perform(get("/api/recipes/some-recipe-id/public"))
-                                .andExpect(status().isNotFound());
+                                .andExpect(status().isServiceUnavailable());
         }
 }
