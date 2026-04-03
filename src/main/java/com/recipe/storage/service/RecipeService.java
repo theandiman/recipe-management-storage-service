@@ -632,16 +632,22 @@ public class RecipeService {
         throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
       }
 
-      // Idempotent set: overwrites existing document if it is already saved
+      // Only create the bookmark if it does not already exist so savedAt reflects first save time
       DocumentReference savedDocRef = firestore
           .collection(savedRecipesCollection)
           .document(userId)
           .collection("recipes")
           .document(recipeId);
 
-      Map<String, Object> data = new HashMap<>();
-      data.put("savedAt", com.google.cloud.Timestamp.now());
-      savedDocRef.set(data).get();
+      firestore.runTransaction(transaction -> {
+        DocumentSnapshot existingSavedDoc = transaction.get(savedDocRef).get();
+        if (!existingSavedDoc.exists()) {
+          Map<String, Object> data = new HashMap<>();
+          data.put("savedAt", com.google.cloud.Timestamp.now());
+          transaction.set(savedDocRef, data);
+        }
+        return null;
+      }).get();
 
       log.info("Recipe {} saved by user {}", recipeId, userId);
     } catch (ResponseStatusException e) {
