@@ -46,6 +46,9 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
     MDC.put("request.id", requestId);
 
     try {
+      // Set HSTS header on all responses (including errors)
+      response.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+
       // Skip auth for OPTIONS requests (CORS preflight)
       if ("OPTIONS".equals(request.getMethod())) {
         // Set CORS headers for preflight response
