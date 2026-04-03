@@ -47,7 +47,7 @@ Migrates recipe documents from old schema to new schema:
 ### Usage
 
 ```bash
-# From the storage-service directory
+# From the recipe-management-service directory
 cd /Users/andy/code/recipe-management/recipe-management-service
 
 # Run the migration
