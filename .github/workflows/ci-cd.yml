@@ -107,7 +107,7 @@ jobs:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       run: |
         mvn -B sonar:sonar \
-          -Dsonar.projectKey=theandiman_recipe-management-service \
+          -Dsonar.projectKey=theandiman_recipe-management-storage-service \
           -Dsonar.organization=theandiman \
           -Dsonar.host.url=https://sonarcloud.io
 
