@@ -80,4 +80,9 @@ public class RecipeResponse {
     @Schema(description = "Display name of the recipe author (populated for public recipes)", nullable = true,
             example = "Jane Smith")
     private String authorDisplayName;
+
+    @Schema(description = "Whether this recipe is saved/bookmarked by the current authenticated user",
+            example = "false")
+    @JsonProperty("isSavedByCurrentUser")
+    private boolean isSavedByCurrentUser;
 }

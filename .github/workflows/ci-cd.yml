@@ -15,7 +15,7 @@ concurrency:
 jobs:
   ci:
     name: Build and Test
-    uses: theandiman/recipe-management/.github/workflows/backend-java-ci.yml@973f68b323d96d59ce2ac00723f4ecc641c063f5
+    uses: theandiman/recipe-management/.github/workflows/backend-java-ci.yml@0d0907639ec4a5c7cfed4ace1d574696c886591c
     permissions:
       contents: read
       actions: write
