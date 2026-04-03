@@ -92,6 +92,8 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
       }
 
       if (!authEnabled) {
+        // When auth is disabled (dev/test mode only), allow caller to specify userId via header.
+        // Falls back to "test-user" if no header is provided.
         String userId = request.getHeader("userId");
         if (userId == null || userId.isEmpty()) {
           userId = "test-user";
