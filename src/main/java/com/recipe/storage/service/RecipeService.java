@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,6 +50,9 @@ public class RecipeService {
   @Value("${firestore.collection.recipes}")
   private String recipesCollection;
 
+  // In-memory store for testing when Firestore is not available
+  private final ConcurrentHashMap<String, Recipe> mockStore = new ConcurrentHashMap<>();
+
   /**
    * Save a new recipe to Firestore.
    *
@@ -58,8 +62,8 @@ public class RecipeService {
    */
   public RecipeResponse saveRecipe(CreateRecipeRequest request, String userId) {
     if (firestore == null) {
-      log.warn("Firestore not configured - running in test mode");
-      return createMockResponse(request, userId);
+      log.warn("Firestore not configured - saving to in-memory store");
+      return saveToMockStore(request, userId);
     }
 
     try {
@@ -114,7 +118,7 @@ public class RecipeService {
    */
   public RecipeResponse updateRecipe(String recipeId, CreateRecipeRequest request, String userId) {
     if (firestore == null) {
-      return createMockResponse(request, userId);
+      return updateInMockStore(recipeId, request, userId);
     }
 
     try {
@@ -175,9 +179,9 @@ public class RecipeService {
   }
 
   /**
-   * Create mock response for testing without Firestore.
+   * Save a recipe to the in-memory mock store.
    */
-  private RecipeResponse createMockResponse(CreateRecipeRequest request, String userId) {
+  private RecipeResponse saveToMockStore(CreateRecipeRequest request, String userId) {
     String recipeId = UUID.randomUUID().toString();
     Instant now = Instant.now();
 
@@ -205,8 +209,136 @@ public class RecipeService {
         .updatedAt(now)
         .build();
 
-    log.info("Mock recipe created with ID: {}", recipeId);
+    mockStore.put(recipeId, recipe);
+    log.info("Mock recipe saved with ID: {}", recipeId);
     return mapToResponse(recipe);
+  }
+
+  /**
+   * Update a recipe in the in-memory mock store.
+   */
+  private RecipeResponse updateInMockStore(String recipeId, CreateRecipeRequest request,
+      String userId) {
+    Recipe existingRecipe = mockStore.get(recipeId);
+    if (existingRecipe == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
+    }
+
+    if (!userId.equals(existingRecipe.getUserId())) {
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+    }
+
+    Instant now = Instant.now();
+    NutritionalInfo nutritionalInfo = mapToNutritionalInfo(request.getNutrition());
+    com.recipe.shared.model.RecipeTips recipeTips = mapToRecipeTips(request.getTips());
+
+    Recipe updatedRecipe = existingRecipe.toBuilder()
+        .recipeName(request.getTitle())
+        .description(request.getDescription())
+        .ingredients(request.getIngredients())
+        .instructions(request.getInstructions())
+        .prepTimeMinutes(request.getPrepTime())
+        .cookTimeMinutes(request.getCookTime())
+        .servings(request.getServings())
+        .nutritionalInfo(nutritionalInfo)
+        .tips(recipeTips)
+        .imageUrl(request.getImageUrl())
+        .source(request.getSource())
+        .tags(request.getTags())
+        .dietaryRestrictions(request.getDietaryRestrictions())
+        .publicRecipe(request.isPublic())
+        .updatedAt(now)
+        .build();
+
+    mockStore.put(recipeId, updatedRecipe);
+    log.info("Mock recipe updated with ID: {}", recipeId);
+    return mapToResponse(updatedRecipe);
+  }
+
+  /**
+   * Get a recipe from the in-memory mock store.
+   */
+  private RecipeResponse getFromMockStore(String recipeId, String userId) {
+    Recipe recipe = mockStore.get(recipeId);
+    if (recipe == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
+    }
+
+    if (!userId.equals(recipe.getUserId()) && !recipe.isPublicRecipe()) {
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+    }
+
+    return mapToResponse(recipe);
+  }
+
+  /**
+   * Delete a recipe from the in-memory mock store.
+   */
+  private void deleteFromMockStore(String recipeId, String userId) {
+    Recipe recipe = mockStore.get(recipeId);
+    if (recipe == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
+    }
+
+    if (!userId.equals(recipe.getUserId())) {
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+    }
+
+    mockStore.remove(recipeId);
+    log.info("Mock recipe deleted with ID: {}", recipeId);
+  }
+
+  /**
+   * Update recipe sharing in the in-memory mock store.
+   */
+  private RecipeResponse updateSharingInMockStore(String recipeId, boolean isPublic,
+      String userId) {
+    Recipe existingRecipe = mockStore.get(recipeId);
+    if (existingRecipe == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
+    }
+
+    if (!userId.equals(existingRecipe.getUserId())) {
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+    }
+
+    Recipe updatedRecipe = existingRecipe.toBuilder()
+        .publicRecipe(isPublic)
+        .updatedAt(Instant.now())
+        .build();
+
+    mockStore.put(recipeId, updatedRecipe);
+    return mapToResponse(updatedRecipe);
+  }
+
+  /**
+   * Get user recipes from mock store.
+   */
+  private List<RecipeResponse> getMockUserRecipes(String userId) {
+    List<RecipeResponse> recipes = new ArrayList<>();
+    mockStore.values().forEach(recipe -> {
+      if (userId.equals(recipe.getUserId())) {
+        recipes.add(mapToResponse(recipe));
+      }
+    });
+    // Sort recently created first
+    recipes.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
+    return recipes;
+  }
+
+  /**
+   * Get public recipes from mock store.
+   */
+  private List<RecipeResponse> getMockPublicRecipes() {
+    List<RecipeResponse> recipes = new ArrayList<>();
+    mockStore.values().forEach(recipe -> {
+      if (recipe.isPublicRecipe()) {
+        recipes.add(mapToResponse(recipe));
+      }
+    });
+    // Sort recently created first
+    recipes.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
+    return recipes;
   }
 
   /**
@@ -217,8 +349,8 @@ public class RecipeService {
    */
   public List<RecipeResponse> getUserRecipes(String userId) {
     if (firestore == null) {
-      log.warn("Firestore not configured - returning empty list");
-      return new ArrayList<>();
+      log.warn("Firestore not configured - returning from in-memory store");
+      return getMockUserRecipes(userId);
     }
 
     try {
@@ -270,11 +402,12 @@ public class RecipeService {
     }
 
     if (firestore == null) {
-      log.warn("Firestore not configured - returning empty paged response");
+      log.warn("Firestore not configured - returning from in-memory store");
+      List<RecipeResponse> mockRecipes = getMockPublicRecipes();
       return PagedRecipeResponse.builder()
-          .recipes(new ArrayList<>())
+          .recipes(mockRecipes)
           .size(size)
-          .totalCount(0)
+          .totalCount(mockRecipes.size())
           .nextPageToken(null)
           .build();
     }
@@ -439,8 +572,8 @@ public class RecipeService {
    */
   public RecipeResponse getRecipe(String recipeId, String userId) {
     if (firestore == null) {
-      log.warn("Firestore not configured - cannot fetch recipe");
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
+      log.warn("Firestore not configured - fetching from in-memory store");
+      return getFromMockStore(recipeId, userId);
     }
 
     try {
@@ -485,8 +618,9 @@ public class RecipeService {
    */
   public void deleteRecipe(String recipeId, String userId) {
     if (firestore == null) {
-      log.warn("Firestore not configured - cannot delete recipe");
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
+      log.warn("Firestore not configured - deleting from in-memory store");
+      deleteFromMockStore(recipeId, userId);
+      return;
     }
 
     try {
@@ -535,8 +669,8 @@ public class RecipeService {
    */
   public RecipeResponse updateRecipeSharing(String recipeId, boolean isPublic, String userId) {
     if (firestore == null) {
-      log.warn("Firestore not configured - cannot update sharing");
-      throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Database not configured");
+      log.warn("Firestore not configured - updating sharing entirely in memory");
+      return updateSharingInMockStore(recipeId, isPublic, userId);
     }
 
     try {
