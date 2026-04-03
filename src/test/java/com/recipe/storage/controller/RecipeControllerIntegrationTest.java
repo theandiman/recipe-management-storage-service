@@ -166,6 +166,52 @@ class RecipeControllerIntegrationTest {
                 .andExpect(status().isNotFound());
     }
 
+    // ── Save / Unsave / Saved-list endpoints ─────────────────────────────────
+
+    @Test
+    void saveRecipe_WithNoFirestore_ReturnsServiceUnavailable() throws Exception {
+        // Without Firestore, saving a recipe returns 503
+        mockMvc.perform(post("/api/recipes/some-id/save")
+                .header("X-User-ID", "test-user"))
+                .andExpect(status().isServiceUnavailable());
+    }
+
+    @Test
+    void unsaveRecipe_WithNoFirestore_ReturnsServiceUnavailable() throws Exception {
+        // Without Firestore, unsaving a recipe returns 503
+        mockMvc.perform(delete("/api/recipes/some-id/save")
+                .header("X-User-ID", "test-user"))
+                .andExpect(status().isServiceUnavailable());
+    }
+
+    @Test
+    void getSavedRecipes_WithNoFirestore_ReturnsEmptyList() throws Exception {
+        // Without Firestore, returns an empty paged envelope
+        mockMvc.perform(get("/api/recipes/saved")
+                .header("X-User-ID", "test-user"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recipes").isArray())
+                .andExpect(jsonPath("$.totalCount").value(0))
+                .andExpect(jsonPath("$.size").value(20));
+    }
+
+    @Test
+    void getSavedRecipes_SizeExceedsMax_ReturnsBadRequest() throws Exception {
+        mockMvc.perform(get("/api/recipes/saved")
+                .param("size", "101")
+                .header("X-User-ID", "test-user"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getSavedRecipes_WithCustomSize_ReturnsCorrectSize() throws Exception {
+        mockMvc.perform(get("/api/recipes/saved")
+                .param("size", "10")
+                .header("X-User-ID", "test-user"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.size").value(10));
+    }
+
     // Note: GET endpoint tests are skipped in integration tests
     // because they require Firestore to be configured.
     // These endpoints will be tested in manual/E2E tests with real Firestore.

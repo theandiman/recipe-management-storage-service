@@ -55,11 +55,11 @@ test_endpoint() {
 
     if [ "$status_code" = "$expected_status" ]; then
         echo -e "${GREEN}✓ PASSED${NC} (HTTP $status_code)"
-        ((TESTS_PASSED++))
+        TESTS_PASSED=$((TESTS_PASSED + 1))
         return 0
     else
         echo -e "${RED}✗ FAILED${NC} (Expected HTTP $expected_status, got HTTP $status_code)"
-        ((TESTS_FAILED++))
+        TESTS_FAILED=$((TESTS_FAILED + 1))
         return 1
     fi
 }
@@ -81,7 +81,7 @@ test_endpoint_with_response() {
 
     if [ "$status_code" != "$expected_status" ]; then
         echo -e "${RED}✗ FAILED${NC} (Expected HTTP $expected_status, got HTTP $status_code)"
-        ((TESTS_FAILED++))
+        TESTS_FAILED=$((TESTS_FAILED + 1))
         return 1
     fi
 
@@ -89,16 +89,16 @@ test_endpoint_with_response() {
     if [ "$check_json" = "true" ] && [ "$JQ_AVAILABLE" = true ]; then
         if echo "$body" | jq empty 2>/dev/null; then
             echo -e "${GREEN}✓ PASSED${NC} (HTTP $status_code, valid JSON)"
-            ((TESTS_PASSED++))
+            TESTS_PASSED=$((TESTS_PASSED + 1))
             return 0
         else
             echo -e "${RED}✗ FAILED${NC} (HTTP $status_code, but invalid JSON response)"
-            ((TESTS_FAILED++))
+            TESTS_FAILED=$((TESTS_FAILED + 1))
             return 1
         fi
     else
         echo -e "${GREEN}✓ PASSED${NC} (HTTP $status_code)"
-        ((TESTS_PASSED++))
+        TESTS_PASSED=$((TESTS_PASSED + 1))
         return 0
     fi
 }
@@ -117,10 +117,10 @@ echo -n "Testing: Swagger UI endpoint... "
 status_code=$(curl -s -o /dev/null -w "%{http_code}" -L --fail-with-body --connect-timeout 5 --max-time 10 "$SERVICE_URL/swagger-ui.html")
 if [ "$status_code" = "200" ]; then
     echo -e "${GREEN}✓ PASSED${NC} (HTTP $status_code after redirect)"
-    ((TESTS_PASSED++))
+    TESTS_PASSED=$((TESTS_PASSED + 1))
 else
     echo -e "${RED}✗ FAILED${NC} (Expected HTTP 200, got HTTP $status_code)"
-    ((TESTS_FAILED++))
+    TESTS_FAILED=$((TESTS_FAILED + 1))
 fi
 
 # Test 4: OpenAPI spec endpoint
@@ -133,10 +133,10 @@ if [ "$status_code" = "401" ] || [ "$status_code" = "403" ] || [ "$status_code" 
     # Note: Currently auth checking is disabled in some configs, so 200 might be returned. 
     # Adjusting expectation to pass if service is responsive.
     echo -e "${GREEN}✓ PASSED${NC} (HTTP $status_code)"
-    ((TESTS_PASSED++))
+    TESTS_PASSED=$((TESTS_PASSED + 1))
 else
     echo -e "${RED}✗ FAILED${NC} (Expected HTTP 401/403 or 200, got HTTP $status_code)"
-    ((TESTS_FAILED++))
+    TESTS_FAILED=$((TESTS_FAILED + 1))
 fi
 
 # ==============================================================================
@@ -171,7 +171,7 @@ if [ "$JQ_AVAILABLE" = "true" ]; then
         
     if [ "$http_code" = "201" ]; then
         echo -e "${GREEN}✓ PASSED${NC} (HTTP $http_code)"
-        ((TESTS_PASSED++))
+        TESTS_PASSED=$((TESTS_PASSED + 1))
         
         # Extract ID
         RECIPE_ID=$(cat "$create_response" | jq -r '.id')
@@ -187,7 +187,7 @@ if [ "$JQ_AVAILABLE" = "true" ]; then
                 
             if [ "$get_code" = "200" ]; then
                 echo -e "${GREEN}✓ PASSED${NC} (HTTP $get_code)"
-                ((TESTS_PASSED++))
+                TESTS_PASSED=$((TESTS_PASSED + 1))
                 
                 # 3. Delete Recipe (DELETE)
                 echo -n "Testing: Delete Recipe (DELETE)... "
@@ -196,7 +196,7 @@ if [ "$JQ_AVAILABLE" = "true" ]; then
                     
                 if [ "$delete_code" = "204" ]; then
                     echo -e "${GREEN}✓ PASSED${NC} (HTTP $delete_code)"
-                    ((TESTS_PASSED++))
+                    TESTS_PASSED=$((TESTS_PASSED + 1))
                     
                     # 4. Verify Deletion (GET -> 404)
                     echo -n "Testing: Verify Deletion (GET)... "
@@ -205,32 +205,32 @@ if [ "$JQ_AVAILABLE" = "true" ]; then
                         
                     if [ "$verify_code" = "404" ]; then
                         echo -e "${GREEN}✓ PASSED${NC} (HTTP $verify_code)"
-                        ((TESTS_PASSED++))
+                        TESTS_PASSED=$((TESTS_PASSED + 1))
                     else
                         echo -e "${RED}✗ FAILED${NC} (Expected 404, got $verify_code)"
-                        ((TESTS_FAILED++))
+                        TESTS_FAILED=$((TESTS_FAILED + 1))
                     fi
                 else
                     echo -e "${RED}✗ FAILED${NC} (Expected 204, got $delete_code)"
-                    ((TESTS_FAILED++))
+                    TESTS_FAILED=$((TESTS_FAILED + 1))
                 fi
             else
                 echo -e "${RED}✗ FAILED${NC} (Expected 200, got $get_code)"
-                ((TESTS_FAILED++))
+                TESTS_FAILED=$((TESTS_FAILED + 1))
             fi
         else
             echo -e "${RED}✗ FAILED${NC} (Could not extract ID from response)"
-            ((TESTS_FAILED++))
+            TESTS_FAILED=$((TESTS_FAILED + 1))
         fi
     elif [ "$http_code" = "401" ] || [ "$http_code" = "403" ]; then
         echo -e "${YELLOW}⚠ SKIPPED${NC} (HTTP $http_code - authentication required, no token available for smoke test)"
         rm -f "$create_response"
-        ((TESTS_SKIPPED++))
+        TESTS_SKIPPED=$((TESTS_SKIPPED + 1))
     else
         echo -e "${RED}✗ FAILED${NC} (Expected 201, got $http_code)"
         cat "$create_response" # Print response body for debugging
         rm -f "$create_response"
-        ((TESTS_FAILED++))
+        TESTS_FAILED=$((TESTS_FAILED + 1))
     fi
 else
     echo -e "${YELLOW}Skipping CRUD Smoke Test (jq not installed)${NC}"
