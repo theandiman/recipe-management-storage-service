@@ -84,6 +84,13 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
         return;
       }
 
+      // Skip auth for public user profile endpoint (read-only methods only)
+      if (path.matches("/api/users/[^/]+/profile")
+          && ("GET".equals(method) || "HEAD".equals(method))) {
+        filterChain.doFilter(request, response);
+        return;
+      }
+
       // Skip auth for Swagger UI and API docs
       if (path.startsWith("/v3/api-docs")
           || path.startsWith("/swagger-ui")) {
