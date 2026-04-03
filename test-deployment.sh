@@ -210,8 +210,8 @@ if [ "$JQ_AVAILABLE" = "true" ]; then
                         ((TESTS_FAILED++))
                     fi
                 else
-                     echo -e "${RED}✗ FAILED${NC} (Expected 204, got $delete_code)"
-                     ((TESTS_FAILED++))
+                    echo -e "${RED}✗ FAILED${NC} (Expected 204, got $delete_code)"
+                    ((TESTS_FAILED++))
                 fi
             else
                 echo -e "${RED}✗ FAILED${NC} (Expected 200, got $get_code)"
