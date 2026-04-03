@@ -130,6 +130,7 @@ jobs:
     permissions:
       contents: read
       actions: read  # For downloading artifacts
+      id-token: write  # Required for Workload Identity Federation
 
     steps:
     - name: Checkout code
@@ -143,10 +144,13 @@ jobs:
         path: .
 
     - name: Authenticate to Google Cloud
-      run: |
-        echo "${{ secrets.GCP_SA_KEY }}" | base64 --decode > /tmp/sa-key.json
-        gcloud auth activate-service-account --key-file=/tmp/sa-key.json
-        gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+      uses: google-github-actions/auth@v2
+      with:
+        workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+        service_account: ${{ secrets.GCP_DEPLOY_SA }}
+
+    - name: Setup Google Cloud SDK
+      uses: google-github-actions/setup-gcloud@v3
 
     - name: Build and push Docker image
       run: |
@@ -173,6 +177,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     permissions:
       actions: read  # For downloading artifacts
+      id-token: write  # Required for Workload Identity Federation
     outputs:
       service-url: ${{ steps.deploy.outputs.service-url }}
 
@@ -184,10 +189,13 @@ jobs:
         path: .
 
     - name: Authenticate to Google Cloud
-      run: |
-        echo "${{ secrets.GCP_SA_KEY }}" | base64 --decode > /tmp/sa-key.json
-        gcloud auth activate-service-account --key-file=/tmp/sa-key.json
-        gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+      uses: google-github-actions/auth@v2
+      with:
+        workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+        service_account: ${{ secrets.GCP_DEPLOY_SA }}
+
+    - name: Setup Google Cloud SDK
+      uses: google-github-actions/setup-gcloud@v3
 
     - name: Deploy to Cloud Run
       id: deploy
@@ -210,13 +218,17 @@ jobs:
     if: github.ref == 'refs/heads/main'
     permissions:
       actions: write  # For uploading artifacts
+      id-token: write  # Required for Workload Identity Federation
 
     steps:
     - name: Authenticate to Google Cloud
-      run: |
-        echo "${{ secrets.GCP_SA_KEY }}" | base64 --decode > /tmp/sa-key.json
-        gcloud auth activate-service-account --key-file=/tmp/sa-key.json
-        gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+      uses: google-github-actions/auth@v2
+      with:
+        workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+        service_account: ${{ secrets.GCP_DEPLOY_SA }}
+
+    - name: Setup Google Cloud SDK
+      uses: google-github-actions/setup-gcloud@v3
 
     - name: Run OWASP ZAP scan
       run: |
