@@ -35,12 +35,13 @@ public class UserProfileService {
    *
    * @param uid The Firebase user ID
    * @return The public profile response
-   * @throws ResponseStatusException 404 if the user does not exist
+   * @throws ResponseStatusException 404 if the user does not exist, 503 if Firestore is not configured
    */
   public UserProfileResponse getUserProfile(String uid) {
     if (firestore == null) {
       log.warn("Firestore not configured - cannot fetch user profile");
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+      throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+          "User profile service unavailable");
     }
 
     try {
