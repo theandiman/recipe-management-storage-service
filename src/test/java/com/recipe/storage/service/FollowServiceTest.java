@@ -1,13 +1,19 @@
 package com.recipe.storage.service;
 
 import com.google.api.core.ApiFuture;
+import com.google.cloud.Timestamp;
 import com.google.cloud.firestore.CollectionReference;
 import com.google.cloud.firestore.DocumentReference;
 import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.cloud.firestore.FieldValue;
 import com.google.cloud.firestore.Firestore;
+import com.google.cloud.firestore.Query;
+import com.google.cloud.firestore.QueryDocumentSnapshot;
+import com.google.cloud.firestore.QuerySnapshot;
 import com.google.cloud.firestore.SetOptions;
 import com.google.cloud.firestore.Transaction;
+import com.recipe.storage.dto.FollowUserResponse;
+import com.recipe.storage.dto.PagedFollowResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,14 +24,21 @@ import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -87,6 +100,14 @@ class FollowServiceTest {
         when(followerDoc.collection("following")).thenReturn(followingSubcol);
         when(followingSubcol.document(followedId)).thenReturn(followDocRef);
 
+        // Stub doc refs for follows/{followedId}/followers/{followerId} (reverse index)
+        DocumentReference followedDoc = mock(DocumentReference.class);
+        CollectionReference followersSubcol = mock(CollectionReference.class);
+        DocumentReference reverseFollowDocRef = mock(DocumentReference.class);
+        when(followsCol.document(followedId)).thenReturn(followedDoc);
+        when(followedDoc.collection("followers")).thenReturn(followersSubcol);
+        when(followersSubcol.document(followerId)).thenReturn(reverseFollowDocRef);
+
         // Stub user doc refs
         CollectionReference usersCol = mock(CollectionReference.class);
         DocumentReference followerUserRef = mock(DocumentReference.class);
@@ -116,8 +137,10 @@ class FollowServiceTest {
         followService.followUser(followerId, followedId);
 
         verify(txResult).get();
-        // Verify follow doc was created
+        // Verify forward follow doc was created
         verify(mockTx).set(eq(followDocRef), any());
+        // Verify reverse follow doc (followers) was created
+        verify(mockTx).set(eq(reverseFollowDocRef), any());
 
         // Verify followerCount and followingCount were incremented on the correct documents
         ArgumentCaptor<Map> followerMapCaptor = ArgumentCaptor.forClass(Map.class);
@@ -275,6 +298,14 @@ class FollowServiceTest {
         when(followerDoc.collection("following")).thenReturn(followingSubcol);
         when(followingSubcol.document(followedId)).thenReturn(followDocRef);
 
+        // Stub reverse index doc refs for follows/{followedId}/followers/{followerId}
+        DocumentReference followedDoc = mock(DocumentReference.class);
+        CollectionReference followersSubcol = mock(CollectionReference.class);
+        DocumentReference reverseFollowDocRef = mock(DocumentReference.class);
+        when(followsCol.document(followedId)).thenReturn(followedDoc);
+        when(followedDoc.collection("followers")).thenReturn(followersSubcol);
+        when(followersSubcol.document(followerId)).thenReturn(reverseFollowDocRef);
+
         CollectionReference usersCol = mock(CollectionReference.class);
         DocumentReference followerUserRef = mock(DocumentReference.class);
         DocumentReference followedUserRef = mock(DocumentReference.class);
@@ -288,7 +319,7 @@ class FollowServiceTest {
         when(followSnapshot.exists()).thenReturn(true);
         when(mockTx.get(followDocRef)).thenReturn(snapFuture);
         when(snapFuture.get()).thenReturn(followSnapshot);
-        when(mockTx.delete(followDocRef)).thenReturn(mockTx);
+        when(mockTx.delete(any())).thenReturn(mockTx);
         when(mockTx.set(any(), any(), any())).thenReturn(mockTx);
 
         ApiFuture<Boolean> txResult = mock(ApiFuture.class);
@@ -302,8 +333,10 @@ class FollowServiceTest {
         followService.unfollowUser(followerId, followedId);
 
         verify(txResult).get();
-        // Verify follow doc was deleted
+        // Verify forward follow doc was deleted
         verify(mockTx).delete(followDocRef);
+        // Verify reverse follow doc (followers) was deleted
+        verify(mockTx).delete(reverseFollowDocRef);
 
         // Verify followerCount and followingCount were decremented on the correct documents
         ArgumentCaptor<Map> followerMapCaptor = ArgumentCaptor.forClass(Map.class);
@@ -420,5 +453,290 @@ class FollowServiceTest {
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> followService.unfollowUser(followerId, followedId));
         assertEquals(HttpStatus.SERVICE_UNAVAILABLE, ex.getStatusCode());
+    }
+
+    // -------------------------------------------------------------------------
+    // getFollowers / getFollowing tests
+    // -------------------------------------------------------------------------
+
+    @Test
+    void getFollowers_NullFirestore_Throws503() {
+        FollowService noFirestoreService = new FollowService();
+        ReflectionTestUtils.setField(noFirestoreService, "followsCollection", "follows");
+        ReflectionTestUtils.setField(noFirestoreService, "usersCollection", "users");
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> noFirestoreService.getFollowers("user1", null, 20));
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, ex.getStatusCode());
+    }
+
+    @Test
+    void getFollowing_NullFirestore_Throws503() {
+        FollowService noFirestoreService = new FollowService();
+        ReflectionTestUtils.setField(noFirestoreService, "followsCollection", "follows");
+        ReflectionTestUtils.setField(noFirestoreService, "usersCollection", "users");
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> noFirestoreService.getFollowing("user1", null, 20));
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, ex.getStatusCode());
+    }
+
+    @Test
+    void getFollowers_InvalidPageToken_Throws400() {
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> followService.getFollowers("user1", "not-valid-base64!!!", 20));
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+    }
+
+    @Test
+    void getFollowing_InvalidPageToken_Throws400() {
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> followService.getFollowing("user1", "not-valid-base64!!!", 20));
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void getFollowers_EmptyCollection_ReturnsEmptyList() throws Exception {
+        CollectionReference followsCol = mock(CollectionReference.class);
+        DocumentReference userDoc = mock(DocumentReference.class);
+        CollectionReference followersSubcol = mock(CollectionReference.class);
+        Query orderedQuery = mock(Query.class);
+        Query limitedQuery = mock(Query.class);
+        ApiFuture<QuerySnapshot> queryFuture = mock(ApiFuture.class);
+        QuerySnapshot emptySnapshot = mock(QuerySnapshot.class);
+
+        when(firestore.collection("follows")).thenReturn(followsCol);
+        when(followsCol.document("user1")).thenReturn(userDoc);
+        when(userDoc.collection("followers")).thenReturn(followersSubcol);
+        when(followersSubcol.orderBy("followedAt", Query.Direction.ASCENDING)).thenReturn(orderedQuery);
+        when(orderedQuery.limit(20)).thenReturn(limitedQuery);
+        when(limitedQuery.get()).thenReturn(queryFuture);
+        when(queryFuture.get()).thenReturn(emptySnapshot);
+        when(emptySnapshot.isEmpty()).thenReturn(true);
+        when(emptySnapshot.getDocuments()).thenReturn(Collections.emptyList());
+
+        PagedFollowResponse result = followService.getFollowers("user1", null, 20);
+
+        assertTrue(result.getUsers().isEmpty());
+        assertNull(result.getNextPageToken());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void getFollowing_EmptyCollection_ReturnsEmptyList() throws Exception {
+        CollectionReference followsCol = mock(CollectionReference.class);
+        DocumentReference userDoc = mock(DocumentReference.class);
+        CollectionReference followingSubcol = mock(CollectionReference.class);
+        Query orderedQuery = mock(Query.class);
+        Query limitedQuery = mock(Query.class);
+        ApiFuture<QuerySnapshot> queryFuture = mock(ApiFuture.class);
+        QuerySnapshot emptySnapshot = mock(QuerySnapshot.class);
+
+        when(firestore.collection("follows")).thenReturn(followsCol);
+        when(followsCol.document("user1")).thenReturn(userDoc);
+        when(userDoc.collection("following")).thenReturn(followingSubcol);
+        when(followingSubcol.orderBy("followedAt", Query.Direction.ASCENDING)).thenReturn(orderedQuery);
+        when(orderedQuery.limit(20)).thenReturn(limitedQuery);
+        when(limitedQuery.get()).thenReturn(queryFuture);
+        when(queryFuture.get()).thenReturn(emptySnapshot);
+        when(emptySnapshot.isEmpty()).thenReturn(true);
+        when(emptySnapshot.getDocuments()).thenReturn(Collections.emptyList());
+
+        PagedFollowResponse result = followService.getFollowing("user1", null, 20);
+
+        assertTrue(result.getUsers().isEmpty());
+        assertNull(result.getNextPageToken());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void getFollowers_WithResults_ReturnsEnrichedListWithNextToken() throws Exception {
+        String ownerUid = "owner1";
+        String followerUid = "followerA";
+        long tsSeconds = 1000000L;
+        int tsNanos = 500;
+
+        CollectionReference followsCol = mock(CollectionReference.class);
+        DocumentReference userDoc = mock(DocumentReference.class);
+        CollectionReference followersSubcol = mock(CollectionReference.class);
+        Query orderedQuery = mock(Query.class);
+        Query limitedQuery = mock(Query.class);
+        ApiFuture<QuerySnapshot> queryFuture = mock(ApiFuture.class);
+        QuerySnapshot snapshot = mock(QuerySnapshot.class);
+        QueryDocumentSnapshot followerDoc = mock(QueryDocumentSnapshot.class);
+
+        when(firestore.collection("follows")).thenReturn(followsCol);
+        when(followsCol.document(ownerUid)).thenReturn(userDoc);
+        when(userDoc.collection("followers")).thenReturn(followersSubcol);
+        when(followersSubcol.orderBy("followedAt", Query.Direction.ASCENDING)).thenReturn(orderedQuery);
+        when(orderedQuery.limit(1)).thenReturn(limitedQuery);
+        when(limitedQuery.get()).thenReturn(queryFuture);
+        when(queryFuture.get()).thenReturn(snapshot);
+
+        Timestamp ts = Timestamp.ofTimeSecondsAndNanos(tsSeconds, tsNanos);
+        when(followerDoc.getId()).thenReturn(followerUid);
+        when(followerDoc.getTimestamp("followedAt")).thenReturn(ts);
+        when(snapshot.isEmpty()).thenReturn(false);
+        when(snapshot.getDocuments()).thenReturn(List.of(followerDoc));
+
+        // Stub user profile lookup
+        CollectionReference usersCol = mock(CollectionReference.class);
+        DocumentReference followerUserDocRef = mock(DocumentReference.class);
+        ApiFuture<DocumentSnapshot> userDocFuture = mock(ApiFuture.class);
+        DocumentSnapshot followerUserDoc = mock(DocumentSnapshot.class);
+        when(firestore.collection("users")).thenReturn(usersCol);
+        when(usersCol.document(followerUid)).thenReturn(followerUserDocRef);
+        when(followerUserDocRef.get()).thenReturn(userDocFuture);
+        when(userDocFuture.get()).thenReturn(followerUserDoc);
+        when(followerUserDoc.exists()).thenReturn(true);
+        when(followerUserDoc.getString("displayName")).thenReturn("Alice");
+        when(followerUserDoc.getString("avatarUrl")).thenReturn("https://example.com/alice.jpg");
+
+        PagedFollowResponse result = followService.getFollowers(ownerUid, null, 1);
+
+        assertEquals(1, result.getUsers().size());
+        FollowUserResponse user = result.getUsers().get(0);
+        assertEquals(followerUid, user.getUid());
+        assertEquals("Alice", user.getDisplayName());
+        assertEquals("https://example.com/alice.jpg", user.getPhotoUrl());
+
+        // Next page token should be encoded timestamp
+        String expectedToken = Base64.getUrlEncoder().withoutPadding()
+                .encodeToString((tsSeconds + "," + tsNanos).getBytes(StandardCharsets.UTF_8));
+        assertEquals(expectedToken, result.getNextPageToken());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void getFollowing_WithResults_ReturnsEnrichedList() throws Exception {
+        String ownerUid = "owner1";
+        String followedUid = "followedB";
+
+        CollectionReference followsCol = mock(CollectionReference.class);
+        DocumentReference userDoc = mock(DocumentReference.class);
+        CollectionReference followingSubcol = mock(CollectionReference.class);
+        Query orderedQuery = mock(Query.class);
+        Query limitedQuery = mock(Query.class);
+        ApiFuture<QuerySnapshot> queryFuture = mock(ApiFuture.class);
+        QuerySnapshot snapshot = mock(QuerySnapshot.class);
+        QueryDocumentSnapshot followedDoc = mock(QueryDocumentSnapshot.class);
+
+        when(firestore.collection("follows")).thenReturn(followsCol);
+        when(followsCol.document(ownerUid)).thenReturn(userDoc);
+        when(userDoc.collection("following")).thenReturn(followingSubcol);
+        when(followingSubcol.orderBy("followedAt", Query.Direction.ASCENDING)).thenReturn(orderedQuery);
+        when(orderedQuery.limit(20)).thenReturn(limitedQuery);
+        when(limitedQuery.get()).thenReturn(queryFuture);
+        when(queryFuture.get()).thenReturn(snapshot);
+
+        when(followedDoc.getId()).thenReturn(followedUid);
+        when(followedDoc.getTimestamp("followedAt")).thenReturn(
+                Timestamp.ofTimeSecondsAndNanos(2000000L, 0));
+        when(snapshot.isEmpty()).thenReturn(false);
+        when(snapshot.getDocuments()).thenReturn(List.of(followedDoc));
+
+        CollectionReference usersCol = mock(CollectionReference.class);
+        DocumentReference followedUserDocRef = mock(DocumentReference.class);
+        ApiFuture<DocumentSnapshot> userDocFuture = mock(ApiFuture.class);
+        DocumentSnapshot followedUserDoc = mock(DocumentSnapshot.class);
+        when(firestore.collection("users")).thenReturn(usersCol);
+        when(usersCol.document(followedUid)).thenReturn(followedUserDocRef);
+        when(followedUserDocRef.get()).thenReturn(userDocFuture);
+        when(userDocFuture.get()).thenReturn(followedUserDoc);
+        when(followedUserDoc.exists()).thenReturn(true);
+        when(followedUserDoc.getString("displayName")).thenReturn("Bob");
+        when(followedUserDoc.getString("avatarUrl")).thenReturn(null);
+
+        PagedFollowResponse result = followService.getFollowing(ownerUid, null, 20);
+
+        assertEquals(1, result.getUsers().size());
+        FollowUserResponse user = result.getUsers().get(0);
+        assertEquals(followedUid, user.getUid());
+        assertEquals("Bob", user.getDisplayName());
+        assertNull(user.getPhotoUrl());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void getFollowers_WithValidPageToken_UsesStartAfterCursor() throws Exception {
+        long seconds = 1000000L;
+        int nanos = 500;
+        String token = Base64.getUrlEncoder().withoutPadding()
+                .encodeToString((seconds + "," + nanos).getBytes(StandardCharsets.UTF_8));
+
+        CollectionReference followsCol = mock(CollectionReference.class);
+        DocumentReference userDoc = mock(DocumentReference.class);
+        CollectionReference followersSubcol = mock(CollectionReference.class);
+        Query orderedQuery = mock(Query.class);
+        Query startAfterQuery = mock(Query.class);
+        Query limitedQuery = mock(Query.class);
+        ApiFuture<QuerySnapshot> queryFuture = mock(ApiFuture.class);
+        QuerySnapshot emptySnapshot = mock(QuerySnapshot.class);
+
+        when(firestore.collection("follows")).thenReturn(followsCol);
+        when(followsCol.document("user1")).thenReturn(userDoc);
+        when(userDoc.collection("followers")).thenReturn(followersSubcol);
+        when(followersSubcol.orderBy("followedAt", Query.Direction.ASCENDING)).thenReturn(orderedQuery);
+        when(orderedQuery.startAfter(any(Timestamp.class))).thenReturn(startAfterQuery);
+        when(startAfterQuery.limit(20)).thenReturn(limitedQuery);
+        when(limitedQuery.get()).thenReturn(queryFuture);
+        when(queryFuture.get()).thenReturn(emptySnapshot);
+        when(emptySnapshot.isEmpty()).thenReturn(true);
+        when(emptySnapshot.getDocuments()).thenReturn(Collections.emptyList());
+
+        followService.getFollowers("user1", token, 20);
+
+        verify(orderedQuery).startAfter(Timestamp.ofTimeSecondsAndNanos(seconds, nanos));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void getFollowers_UserProfileNotFound_ReturnsNullFields() throws Exception {
+        String ownerUid = "owner1";
+        String followerUid = "deletedUser";
+
+        CollectionReference followsCol = mock(CollectionReference.class);
+        DocumentReference userDoc = mock(DocumentReference.class);
+        CollectionReference followersSubcol = mock(CollectionReference.class);
+        Query orderedQuery = mock(Query.class);
+        Query limitedQuery = mock(Query.class);
+        ApiFuture<QuerySnapshot> queryFuture = mock(ApiFuture.class);
+        QuerySnapshot snapshot = mock(QuerySnapshot.class);
+        QueryDocumentSnapshot followerDoc = mock(QueryDocumentSnapshot.class);
+
+        when(firestore.collection("follows")).thenReturn(followsCol);
+        when(followsCol.document(ownerUid)).thenReturn(userDoc);
+        when(userDoc.collection("followers")).thenReturn(followersSubcol);
+        when(followersSubcol.orderBy("followedAt", Query.Direction.ASCENDING)).thenReturn(orderedQuery);
+        when(orderedQuery.limit(20)).thenReturn(limitedQuery);
+        when(limitedQuery.get()).thenReturn(queryFuture);
+        when(queryFuture.get()).thenReturn(snapshot);
+
+        when(followerDoc.getId()).thenReturn(followerUid);
+        when(followerDoc.getTimestamp("followedAt")).thenReturn(null);
+        when(snapshot.isEmpty()).thenReturn(false);
+        when(snapshot.getDocuments()).thenReturn(List.of(followerDoc));
+
+        // User profile doc does not exist
+        CollectionReference usersCol = mock(CollectionReference.class);
+        DocumentReference followerUserDocRef = mock(DocumentReference.class);
+        ApiFuture<DocumentSnapshot> userDocFuture = mock(ApiFuture.class);
+        DocumentSnapshot missingUserDoc = mock(DocumentSnapshot.class);
+        when(firestore.collection("users")).thenReturn(usersCol);
+        when(usersCol.document(followerUid)).thenReturn(followerUserDocRef);
+        when(followerUserDocRef.get()).thenReturn(userDocFuture);
+        when(userDocFuture.get()).thenReturn(missingUserDoc);
+        when(missingUserDoc.exists()).thenReturn(false);
+
+        PagedFollowResponse result = followService.getFollowers(ownerUid, null, 20);
+
+        assertEquals(1, result.getUsers().size());
+        FollowUserResponse user = result.getUsers().get(0);
+        assertEquals(followerUid, user.getUid());
+        assertNull(user.getDisplayName());
+        assertNull(user.getPhotoUrl());
+        // No followedAt timestamp -> no next page token
+        assertNull(result.getNextPageToken());
     }
 }

@@ -8,6 +8,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -63,6 +64,18 @@ class FollowControllerIntegrationTest {
     @Test
     void unfollowUser_NoFirestore_ReturnsServiceUnavailable() throws Exception {
         mockMvc.perform(delete("/api/users/other-user/follow"))
+                .andExpect(status().isServiceUnavailable());
+    }
+
+    @Test
+    void getFollowers_NoFirestore_ReturnsServiceUnavailable() throws Exception {
+        mockMvc.perform(get("/api/users/some-user/followers"))
+                .andExpect(status().isServiceUnavailable());
+    }
+
+    @Test
+    void getFollowing_NoFirestore_ReturnsServiceUnavailable() throws Exception {
+        mockMvc.perform(get("/api/users/some-user/following"))
                 .andExpect(status().isServiceUnavailable());
     }
 }
