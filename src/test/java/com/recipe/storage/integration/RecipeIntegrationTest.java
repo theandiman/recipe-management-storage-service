@@ -1,6 +1,7 @@
 package com.recipe.storage.integration;
 
 import com.recipe.storage.dto.CreateRecipeRequest;
+import com.recipe.storage.dto.PagedRecipeResponse;
 import com.recipe.storage.dto.RecipeResponse;
 import com.recipe.storage.dto.UpdateSharingRequest;
 import org.junit.jupiter.api.*;
@@ -189,15 +190,16 @@ class RecipeIntegrationTest {
     @Order(8)
     @DisplayName("Get public recipes - should return recipes marked as public")
     void testGetPublicRecipes() {
-        ResponseEntity<RecipeResponse[]> response = restTemplate.getForEntity(
+        ResponseEntity<PagedRecipeResponse> response = restTemplate.getForEntity(
                 getBaseUrl() + "/public",
-                RecipeResponse[].class);
+                PagedRecipeResponse.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getRecipes()).isNotNull();
 
         // Find our recipe in the public list
-        boolean found = Arrays.stream(response.getBody())
+        boolean found = response.getBody().getRecipes().stream()
                 .anyMatch(r -> r.getId().equals(recipeId) && r.isPublic());
 
         assertThat(found).isTrue();
