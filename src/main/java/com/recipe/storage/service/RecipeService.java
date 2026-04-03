@@ -52,8 +52,6 @@ public class RecipeService {
 
   @Value("${firestore.collection.saved-recipes:savedRecipes}")
   private String savedRecipesCollection;
-  // In-memory store for testing when Firestore is not available
-  private final ConcurrentHashMap<String, Recipe> mockStore = new ConcurrentHashMap<>();
 
   // In-memory store for testing when Firestore is not available
   private final ConcurrentHashMap<String, Recipe> mockStore = new ConcurrentHashMap<>();
@@ -374,13 +372,26 @@ public class RecipeService {
         recipes.add(mapToResponse(recipe));
       });
 
-      // Batch-check which recipes the user has saved
-      java.util.Set<String> savedIds = getSavedRecipeIds(userId);
-
       // Sort in-memory by createdAt (newest first)
       recipes.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
 
-      recipes.forEach(r -> r.setSavedByCurrentUser(savedIds.contains(r.getId())));
+      // Batch-check saved status only for the recipes being returned (avoids full collection read)
+      if (!recipes.isEmpty()) {
+        List<DocumentReference> bookmarkRefs = new ArrayList<>();
+        for (RecipeResponse r : recipes) {
+          bookmarkRefs.add(firestore
+              .collection(savedRecipesCollection)
+              .document(userId)
+              .collection("recipes")
+              .document(r.getId()));
+        }
+        List<DocumentSnapshot> bookmarkDocs = firestore
+            .getAll(bookmarkRefs.toArray(new DocumentReference[0]))
+            .get();
+        for (int i = 0; i < bookmarkDocs.size(); i++) {
+          recipes.get(i).setSavedByCurrentUser(bookmarkDocs.get(i).exists());
+        }
+      }
 
       log.info("Found {} recipes for user {}", recipes.size(), userId);
       return recipes;
@@ -749,8 +760,8 @@ public class RecipeService {
    *
    * @param recipeId The recipe ID to save
    * @param userId   The Firebase user ID
-   * @throws ResponseStatusException 404 if the recipe does not exist,
-   *                                 503 if Firestore is unavailable
+   * @throws ResponseStatusException 404 if the recipe does not exist or is private and not owned
+   *                                 by {@code userId}, 503 if Firestore is unavailable
    */
   public void saveRecipeForUser(String recipeId, String userId) {
     if (firestore == null) {
@@ -765,6 +776,15 @@ public class RecipeService {
 
       if (!recipeDoc.exists()) {
         log.warn("Attempt to save non-existent recipe {}", recipeId);
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
+      }
+
+      Recipe recipe = recipeDoc.toObject(Recipe.class);
+      // Enforce access: treat private recipes not owned by this user as if they don't exist
+      // (to avoid leaking existence of private content)
+      if (recipe != null && !recipe.isPublicRecipe() && !userId.equals(recipe.getUserId())) {
+        log.warn("User {} attempted to save private recipe {} owned by {}",
+            userId, recipeId, recipe.getUserId());
         throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
       }
 
@@ -896,7 +916,9 @@ public class RecipeService {
             DocumentSnapshot recipeDoc = recipeDocs.get(i);
             if (recipeDoc.exists()) {
               Recipe recipe = recipeDoc.toObject(Recipe.class);
-              if (recipe != null) {
+              // Only include recipes accessible to the user (public or owned by them)
+              if (recipe != null
+                  && (recipe.isPublicRecipe() || userId.equals(recipe.getUserId()))) {
                 RecipeResponse response = mapToResponse(recipe);
                 response.setSavedByCurrentUser(true);
                 recipes.add(response);
@@ -947,31 +969,6 @@ public class RecipeService {
       log.warn("Failed to check saved status for recipe {} user {}: {}",
           recipeId, userId, e.getMessage());
       return false;
-    }
-  }
-
-  /**
-   * Get the set of recipe IDs saved (bookmarked) by a user. Returns an empty set on failure.
-   *
-   * @param userId The Firebase user ID
-   * @return Set of saved recipe IDs
-   */
-  private java.util.Set<String> getSavedRecipeIds(String userId) {
-    if (firestore == null) {
-      return java.util.Set.of();
-    }
-    try {
-      QuerySnapshot snapshot = firestore
-          .collection(savedRecipesCollection)
-          .document(userId)
-          .collection("recipes")
-          .get().get();
-      java.util.Set<String> ids = new java.util.HashSet<>();
-      snapshot.getDocuments().forEach(doc -> ids.add(doc.getId()));
-      return ids;
-    } catch (InterruptedException | ExecutionException e) {
-      log.warn("Failed to fetch saved recipe IDs for user {}: {}", userId, e.getMessage());
-      return java.util.Set.of();
     }
   }
 

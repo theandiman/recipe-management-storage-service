@@ -793,7 +793,7 @@ class RecipeServiceTest {
         CollectionReference savedSubRef = mock(CollectionReference.class);
         DocumentReference savedDocRef = mock(DocumentReference.class);
 
-        // recipe existence check
+        // recipe existence check - returns a public recipe
         when(firestore.collection("recipes")).thenReturn(recipesRef);
         when(recipesRef.document(recipeId)).thenReturn(documentReference);
         @SuppressWarnings("unchecked")
@@ -803,18 +803,57 @@ class RecipeServiceTest {
         when(documentReference.get()).thenReturn(snapFuture);
         when(snapFuture.get()).thenReturn(snapDoc);
         when(snapDoc.exists()).thenReturn(true);
+        Recipe publicRecipe = Recipe.builder()
+                .id(recipeId).userId("other-user").recipeName("Pasta").publicRecipe(true)
+                .createdAt(Instant.now()).updatedAt(Instant.now()).build();
+        when(snapDoc.toObject(Recipe.class)).thenReturn(publicRecipe);
 
-        // save document write
+        // save document ref chain
         when(firestore.collection("savedRecipes")).thenReturn(savedTopRef);
         when(savedTopRef.document(userId)).thenReturn(savedUserDocRef);
         when(savedUserDocRef.collection("recipes")).thenReturn(savedSubRef);
         when(savedSubRef.document(recipeId)).thenReturn(savedDocRef);
-        when(savedDocRef.set(any(Map.class))).thenReturn(writeResultFuture);
-        when(writeResultFuture.get()).thenReturn(writeResult);
+
+        // mock transaction to succeed
+        @SuppressWarnings("unchecked")
+        ApiFuture<Object> txFuture = mock(ApiFuture.class);
+        when(txFuture.get()).thenReturn(null);
+        when(firestore.runTransaction(any())).thenReturn(txFuture);
 
         // Act & Assert (no exception)
         recipeService.saveRecipeForUser(recipeId, userId);
-        verify(savedDocRef).set(any(Map.class));
+        verify(firestore).runTransaction(any());
+    }
+
+    @Test
+    void saveRecipeForUser_PrivateRecipeNotOwned_ThrowsNotFoundException()
+            throws ExecutionException, InterruptedException {
+        // Arrange
+        String recipeId = "privateRecipe";
+        String userId = "user123";
+        String ownerId = "other-user";
+
+        CollectionReference recipesRef = mock(CollectionReference.class);
+        when(firestore.collection("recipes")).thenReturn(recipesRef);
+        when(recipesRef.document(recipeId)).thenReturn(documentReference);
+        @SuppressWarnings("unchecked")
+        ApiFuture<com.google.cloud.firestore.DocumentSnapshot> snapFuture = mock(ApiFuture.class);
+        com.google.cloud.firestore.DocumentSnapshot snapDoc =
+                mock(com.google.cloud.firestore.DocumentSnapshot.class);
+        when(documentReference.get()).thenReturn(snapFuture);
+        when(snapFuture.get()).thenReturn(snapDoc);
+        when(snapDoc.exists()).thenReturn(true);
+        Recipe privateRecipe = Recipe.builder()
+                .id(recipeId).userId(ownerId).recipeName("Secret").publicRecipe(false)
+                .createdAt(Instant.now()).updatedAt(Instant.now()).build();
+        when(snapDoc.toObject(Recipe.class)).thenReturn(privateRecipe);
+
+        // Act & Assert
+        org.springframework.web.server.ResponseStatusException ex = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> recipeService.saveRecipeForUser(recipeId, userId));
+        assertEquals(org.springframework.http.HttpStatus.NOT_FOUND, ex.getStatusCode());
+        verify(firestore, never()).runTransaction(any());
     }
 
     @Test
@@ -988,22 +1027,22 @@ class RecipeServiceTest {
         when(qSnap.getDocuments()).thenReturn(List.of(savedDocSnap));
         when(qSnap.isEmpty()).thenReturn(false);
 
-        // actual recipe fetch
+        // batch recipe fetch via firestore.getAll(...)
         CollectionReference recipesRef = mock(CollectionReference.class);
         when(firestore.collection("recipes")).thenReturn(recipesRef);
         when(recipesRef.document(recipeId)).thenReturn(documentReference);
-        @SuppressWarnings("unchecked")
-        ApiFuture<com.google.cloud.firestore.DocumentSnapshot> rFuture = mock(ApiFuture.class);
         com.google.cloud.firestore.DocumentSnapshot rSnap =
                 mock(com.google.cloud.firestore.DocumentSnapshot.class);
-        when(documentReference.get()).thenReturn(rFuture);
-        when(rFuture.get()).thenReturn(rSnap);
         when(rSnap.exists()).thenReturn(true);
-
         Recipe recipe = Recipe.builder()
                 .id(recipeId).userId(userId).recipeName("Pasta").publicRecipe(false)
                 .createdAt(Instant.now()).updatedAt(Instant.now()).build();
         when(rSnap.toObject(Recipe.class)).thenReturn(recipe);
+        @SuppressWarnings("unchecked")
+        ApiFuture<List<com.google.cloud.firestore.DocumentSnapshot>> getAllFuture =
+                mock(ApiFuture.class);
+        when(getAllFuture.get()).thenReturn(List.of(rSnap));
+        when(firestore.getAll(any(DocumentReference[].class))).thenReturn(getAllFuture);
 
         // Act
         PagedRecipeResponse response = recipeService.getSavedRecipes(userId, null, 20);
@@ -1066,17 +1105,5 @@ class RecipeServiceTest {
         assertNotNull(response);
         assertTrue(response.isSavedByCurrentUser());
     }
-        private CreateRecipeRequest createValidRequest() {
-                return CreateRecipeRequest.builder()
-                                .title("Delicious Pasta")
-                                .description("A wonderful Italian pasta dish")
-                                .ingredients(List.of("200g pasta", "2 tomatoes", "1 onion"))
-                                .instructions(List.of("Boil water", "Cook pasta", "Mix ingredients"))
-                                .prepTime(15)
-                                .cookTime(20)
-                                .servings(4)
-                                .source("ai-generated")
-                                .build();
-        }
 }
 
