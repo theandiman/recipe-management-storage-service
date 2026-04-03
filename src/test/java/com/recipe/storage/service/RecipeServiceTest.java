@@ -443,6 +443,56 @@ class RecipeServiceTest {
     }
 
     @Test
+    void getPublicRecipes_SameUserId_FirebaseLookupCalledOncePerUniqueUser() throws Exception {
+        // Arrange
+        String sharedUserId = "user123";
+        String displayName = "Shared Author";
+
+        CollectionReference collectionRef = mock(CollectionReference.class);
+        Query query = mock(Query.class);
+        ApiFuture<QuerySnapshot> queryFuture = mock(ApiFuture.class);
+        QuerySnapshot querySnapshot = mock(QuerySnapshot.class);
+        QueryDocumentSnapshot docSnapshot1 = mock(QueryDocumentSnapshot.class);
+        QueryDocumentSnapshot docSnapshot2 = mock(QueryDocumentSnapshot.class);
+        UserRecord userRecord = mock(UserRecord.class);
+
+        when(firestore.collection(anyString())).thenReturn(collectionRef);
+        when(collectionRef.whereEqualTo("isPublic", true)).thenReturn(query);
+        when(query.get()).thenReturn(queryFuture);
+        when(queryFuture.get()).thenReturn(querySnapshot);
+
+        Recipe recipe1 = Recipe.builder()
+                .id("recipe1")
+                .userId(sharedUserId)
+                .recipeName("Public Recipe 1")
+                .publicRecipe(true)
+                .createdAt(Instant.now())
+                .build();
+        Recipe recipe2 = Recipe.builder()
+                .id("recipe2")
+                .userId(sharedUserId)
+                .recipeName("Public Recipe 2")
+                .publicRecipe(true)
+                .createdAt(Instant.now())
+                .build();
+        when(querySnapshot.getDocuments()).thenReturn(List.of(docSnapshot1, docSnapshot2));
+        when(docSnapshot1.toObject(Recipe.class)).thenReturn(recipe1);
+        when(docSnapshot2.toObject(Recipe.class)).thenReturn(recipe2);
+        when(firebaseAuth.getUser(sharedUserId)).thenReturn(userRecord);
+        when(userRecord.getDisplayName()).thenReturn(displayName);
+
+        // Act
+        List<RecipeResponse> responses = recipeService.getPublicRecipes();
+
+        // Assert
+        assertNotNull(responses);
+        assertEquals(2, responses.size());
+        responses.forEach(r -> assertEquals(displayName, r.getAuthorDisplayName()));
+        // Firebase lookup must be called only once despite two recipes sharing the same userId
+        verify(firebaseAuth, times(1)).getUser(sharedUserId);
+    }
+
+    @Test
     void getPublicRecipe_PopulatesAuthorDisplayName() throws Exception {
         // Arrange
         String recipeId = "recipe123";

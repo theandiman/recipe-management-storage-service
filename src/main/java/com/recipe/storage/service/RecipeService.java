@@ -15,6 +15,7 @@ import com.recipe.storage.dto.CreateRecipeRequest;
 import com.recipe.storage.dto.RecipeResponse;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -261,10 +262,17 @@ public class RecipeService {
       QuerySnapshot querySnapshot = future.get();
 
       List<RecipeResponse> recipes = new ArrayList<>();
+      Map<String, String> displayNameCache = new HashMap<>();
       querySnapshot.getDocuments().forEach(doc -> {
         Recipe recipe = doc.toObject(Recipe.class);
         RecipeResponse response = mapToResponse(recipe);
-        response.setAuthorDisplayName(resolveDisplayName(recipe.getUserId()));
+        String uid = recipe.getUserId();
+        if (uid != null) {
+          if (!displayNameCache.containsKey(uid)) {
+            displayNameCache.put(uid, resolveDisplayName(uid));
+          }
+          response.setAuthorDisplayName(displayNameCache.get(uid));
+        }
         recipes.add(response);
       });
 
@@ -290,7 +298,8 @@ public class RecipeService {
   public RecipeResponse getPublicRecipe(String recipeId) {
     if (firestore == null) {
       log.warn("Firestore not configured - cannot fetch recipe");
-      throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Recipe service unavailable");
+      throw new ResponseStatusException(
+          HttpStatus.SERVICE_UNAVAILABLE, "Recipe service unavailable");
     }
 
     try {
