@@ -49,6 +49,9 @@ public class RecipeService {
   @Value("${firestore.collection.recipes}")
   private String recipesCollection;
 
+  @Value("${firestore.collection.saved-recipes:savedRecipes}")
+  private String savedRecipesCollection;
+
   /**
    * Save a new recipe to Firestore.
    *
@@ -237,8 +240,13 @@ public class RecipeService {
         recipes.add(mapToResponse(recipe));
       });
 
+      // Batch-check which recipes the user has saved
+      java.util.Set<String> savedIds = getSavedRecipeIds(userId);
+
       // Sort in-memory by createdAt (newest first)
       recipes.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
+
+      recipes.forEach(r -> r.setSavedByCurrentUser(savedIds.contains(r.getId())));
 
       log.info("Found {} recipes for user {}", recipes.size(), userId);
       return recipes;
@@ -363,16 +371,28 @@ public class RecipeService {
    * @return a URL-safe base64 cursor token, or {@code null} if no next page exists
    */
   private String encodeNextPageToken(QuerySnapshot querySnapshot) {
+    return encodeNextPageTokenFromField(querySnapshot, "createdAt");
+  }
+
+  /**
+   * Encodes the given timestamp field of the last document in a query snapshot
+   * into an opaque page token for cursor-based pagination.
+   *
+   * @param querySnapshot the Firestore query result snapshot
+   * @param fieldName     the name of the timestamp field to use as cursor
+   * @return a URL-safe base64 cursor token, or {@code null} if no next page exists
+   */
+  private String encodeNextPageTokenFromField(QuerySnapshot querySnapshot, String fieldName) {
     if (querySnapshot.isEmpty()) {
       return null;
     }
     List<? extends DocumentSnapshot> docs = querySnapshot.getDocuments();
     DocumentSnapshot lastDoc = docs.get(docs.size() - 1);
-    Timestamp lastCreatedAt = lastDoc.getTimestamp("createdAt");
-    if (lastCreatedAt == null) {
+    Timestamp lastTimestamp = lastDoc.getTimestamp(fieldName);
+    if (lastTimestamp == null) {
       return null;
     }
-    String cursor = lastCreatedAt.getSeconds() + "," + lastCreatedAt.getNanos();
+    String cursor = lastTimestamp.getSeconds() + "," + lastTimestamp.getNanos();
     return Base64.getUrlEncoder().withoutPadding()
         .encodeToString(cursor.getBytes(StandardCharsets.UTF_8));
   }
@@ -468,7 +488,9 @@ public class RecipeService {
       }
 
       log.info("Retrieved recipe {} for user {}", recipeId, userId);
-      return mapToResponse(recipe);
+      RecipeResponse response = mapToResponse(recipe);
+      response.setSavedByCurrentUser(isRecipeSavedByUser(recipeId, userId));
+      return response;
     } catch (InterruptedException | ExecutionException e) {
       log.error("Error fetching recipe from Firestore", e);
       throw new RuntimeException("Failed to fetch recipe", e);
@@ -582,6 +604,221 @@ public class RecipeService {
     } catch (InterruptedException | ExecutionException e) {
       log.error("Error updating recipe sharing in Firestore", e);
       throw new RuntimeException("Failed to update recipe sharing", e);
+    }
+  }
+
+  /**
+   * Save (bookmark) a recipe for a user. Idempotent – calling this multiple times has
+   * no additional effect.
+   *
+   * @param recipeId The recipe ID to save
+   * @param userId   The Firebase user ID
+   * @throws ResponseStatusException 404 if the recipe does not exist,
+   *                                 503 if Firestore is unavailable
+   */
+  public void saveRecipeForUser(String recipeId, String userId) {
+    if (firestore == null) {
+      log.warn("Firestore not configured - cannot save recipe");
+      throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Database not configured");
+    }
+
+    try {
+      // Verify the recipe exists before bookmarking it
+      DocumentReference recipeDocRef = firestore.collection(recipesCollection).document(recipeId);
+      DocumentSnapshot recipeDoc = recipeDocRef.get().get();
+
+      if (!recipeDoc.exists()) {
+        log.warn("Attempt to save non-existent recipe {}", recipeId);
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
+      }
+
+      // Idempotent set: overwrites existing document if it is already saved
+      DocumentReference savedDocRef = firestore
+          .collection(savedRecipesCollection)
+          .document(userId)
+          .collection("recipes")
+          .document(recipeId);
+
+      Map<String, Object> data = new HashMap<>();
+      data.put("savedAt", com.google.cloud.Timestamp.now());
+      savedDocRef.set(data).get();
+
+      log.info("Recipe {} saved by user {}", recipeId, userId);
+    } catch (ResponseStatusException e) {
+      throw e;
+    } catch (InterruptedException | ExecutionException e) {
+      log.error("Error saving recipe bookmark for recipe {} user {}", recipeId, userId, e);
+      throw new RuntimeException("Failed to save recipe", e);
+    }
+  }
+
+  /**
+   * Unsave (remove bookmark) a recipe for a user. Idempotent – calling this when the recipe is
+   * not saved is a no-op.
+   *
+   * @param recipeId The recipe ID to unsave
+   * @param userId   The Firebase user ID
+   * @throws ResponseStatusException 503 if Firestore is unavailable
+   */
+  public void unsaveRecipeForUser(String recipeId, String userId) {
+    if (firestore == null) {
+      log.warn("Firestore not configured - cannot unsave recipe");
+      throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Database not configured");
+    }
+
+    try {
+      // Idempotent delete: no-op if the document does not exist
+      DocumentReference savedDocRef = firestore
+          .collection(savedRecipesCollection)
+          .document(userId)
+          .collection("recipes")
+          .document(recipeId);
+
+      savedDocRef.delete().get();
+
+      log.info("Recipe {} unsaved by user {}", recipeId, userId);
+    } catch (InterruptedException | ExecutionException e) {
+      log.error("Error unsaving recipe bookmark for recipe {} user {}", recipeId, userId, e);
+      throw new RuntimeException("Failed to unsave recipe", e);
+    }
+  }
+
+  /**
+   * Get the paginated list of recipes saved (bookmarked) by a user,
+   * ordered by save date (newest first).
+   *
+   * @param userId    The Firebase user ID
+   * @param pageToken Opaque cursor token from a previous response (null for first page)
+   * @param size      Number of recipes per page (min 1, max 100)
+   * @return Paginated list of saved recipes
+   */
+  public PagedRecipeResponse getSavedRecipes(String userId, String pageToken, int size) {
+    if (size < 1) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Page size must be at least 1");
+    }
+    if (size > 100) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Page size must not exceed 100");
+    }
+
+    // Validate cursor early to fail fast on bad input
+    com.google.cloud.Timestamp cursor = null;
+    if (pageToken != null && !pageToken.isEmpty()) {
+      cursor = decodePageToken(pageToken);
+    }
+
+    if (firestore == null) {
+      log.warn("Firestore not configured - returning empty paged response");
+      return PagedRecipeResponse.builder()
+          .recipes(new ArrayList<>())
+          .size(size)
+          .totalCount(0)
+          .nextPageToken(null)
+          .build();
+    }
+
+    try {
+      com.google.cloud.firestore.CollectionReference savedRef = firestore
+          .collection(savedRecipesCollection)
+          .document(userId)
+          .collection("recipes");
+
+      // Total count of saved recipes
+      final long totalCount = savedRef.count().get().get().getCount();
+
+      // Build cursor-paginated query ordered by savedAt descending
+      Query pagedQuery = savedRef.orderBy("savedAt", Query.Direction.DESCENDING);
+      if (cursor != null) {
+        pagedQuery = pagedQuery.startAfter(cursor);
+      }
+      pagedQuery = pagedQuery.limit(size);
+
+      QuerySnapshot querySnapshot = pagedQuery.get().get();
+
+      List<RecipeResponse> recipes = new ArrayList<>();
+      for (DocumentSnapshot savedDoc : querySnapshot.getDocuments()) {
+        String recipeId = savedDoc.getId();
+        try {
+          DocumentSnapshot recipeDoc = firestore
+              .collection(recipesCollection)
+              .document(recipeId)
+              .get().get();
+          if (recipeDoc.exists()) {
+            Recipe recipe = recipeDoc.toObject(Recipe.class);
+            if (recipe != null) {
+              RecipeResponse response = mapToResponse(recipe);
+              response.setSavedByCurrentUser(true);
+              recipes.add(response);
+            }
+          }
+        } catch (Exception e) {
+          log.warn("Failed to fetch recipe {} for saved list: {}", recipeId, e.getMessage());
+        }
+      }
+
+      String nextToken = encodeNextPageTokenFromField(querySnapshot, "savedAt");
+      log.info("Found {} saved recipes for user {} (size={}, total={})",
+          recipes.size(), userId, size, totalCount);
+      return PagedRecipeResponse.builder()
+          .recipes(recipes)
+          .size(size)
+          .totalCount(totalCount)
+          .nextPageToken(nextToken)
+          .build();
+    } catch (InterruptedException | ExecutionException e) {
+      log.error("Error fetching saved recipes for user {}", userId, e);
+      throw new RuntimeException("Failed to fetch saved recipes", e);
+    }
+  }
+
+  /**
+   * Check whether a specific recipe is saved (bookmarked) by a user.
+   *
+   * @param recipeId The recipe ID
+   * @param userId   The Firebase user ID
+   * @return {@code true} if the recipe is saved, {@code false} otherwise
+   *         (including when Firestore is unavailable)
+   */
+  private boolean isRecipeSavedByUser(String recipeId, String userId) {
+    if (firestore == null) {
+      return false;
+    }
+    try {
+      DocumentSnapshot doc = firestore
+          .collection(savedRecipesCollection)
+          .document(userId)
+          .collection("recipes")
+          .document(recipeId)
+          .get().get();
+      return doc.exists();
+    } catch (InterruptedException | ExecutionException e) {
+      log.warn("Failed to check saved status for recipe {} user {}: {}",
+          recipeId, userId, e.getMessage());
+      return false;
+    }
+  }
+
+  /**
+   * Get the set of recipe IDs saved (bookmarked) by a user. Returns an empty set on failure.
+   *
+   * @param userId The Firebase user ID
+   * @return Set of saved recipe IDs
+   */
+  private java.util.Set<String> getSavedRecipeIds(String userId) {
+    if (firestore == null) {
+      return java.util.Set.of();
+    }
+    try {
+      QuerySnapshot snapshot = firestore
+          .collection(savedRecipesCollection)
+          .document(userId)
+          .collection("recipes")
+          .get().get();
+      java.util.Set<String> ids = new java.util.HashSet<>();
+      snapshot.getDocuments().forEach(doc -> ids.add(doc.getId()));
+      return ids;
+    } catch (InterruptedException | ExecutionException e) {
+      log.warn("Failed to fetch saved recipe IDs for user {}: {}", userId, e.getMessage());
+      return java.util.Set.of();
     }
   }
 

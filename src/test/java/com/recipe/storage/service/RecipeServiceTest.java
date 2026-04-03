@@ -30,6 +30,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -63,6 +64,7 @@ class RecipeServiceTest {
         recipeService = new RecipeService();
         ReflectionTestUtils.setField(recipeService, "firestore", firestore);
         ReflectionTestUtils.setField(recipeService, "recipesCollection", "recipes");
+        ReflectionTestUtils.setField(recipeService, "savedRecipesCollection", "savedRecipes");
         ReflectionTestUtils.setField(recipeService, "firebaseAuth", firebaseAuth);
     }
 
@@ -766,4 +768,293 @@ class RecipeServiceTest {
                 .source("ai-generated")
                 .build();
     }
+
+    // ── saveRecipeForUser ────────────────────────────────────────────────────
+
+    @Test
+    void saveRecipeForUser_Success() throws ExecutionException, InterruptedException {
+        // Arrange
+        String recipeId = "recipe123";
+        String userId = "user123";
+
+        CollectionReference recipesRef = mock(CollectionReference.class);
+        CollectionReference savedTopRef = mock(CollectionReference.class);
+        DocumentReference savedUserDocRef = mock(DocumentReference.class);
+        CollectionReference savedSubRef = mock(CollectionReference.class);
+        DocumentReference savedDocRef = mock(DocumentReference.class);
+
+        // recipe existence check
+        when(firestore.collection("recipes")).thenReturn(recipesRef);
+        when(recipesRef.document(recipeId)).thenReturn(documentReference);
+        @SuppressWarnings("unchecked")
+        ApiFuture<com.google.cloud.firestore.DocumentSnapshot> snapFuture = mock(ApiFuture.class);
+        com.google.cloud.firestore.DocumentSnapshot snapDoc =
+                mock(com.google.cloud.firestore.DocumentSnapshot.class);
+        when(documentReference.get()).thenReturn(snapFuture);
+        when(snapFuture.get()).thenReturn(snapDoc);
+        when(snapDoc.exists()).thenReturn(true);
+
+        // save document write
+        when(firestore.collection("savedRecipes")).thenReturn(savedTopRef);
+        when(savedTopRef.document(userId)).thenReturn(savedUserDocRef);
+        when(savedUserDocRef.collection("recipes")).thenReturn(savedSubRef);
+        when(savedSubRef.document(recipeId)).thenReturn(savedDocRef);
+        when(savedDocRef.set(any(Map.class))).thenReturn(writeResultFuture);
+        when(writeResultFuture.get()).thenReturn(writeResult);
+
+        // Act & Assert (no exception)
+        recipeService.saveRecipeForUser(recipeId, userId);
+        verify(savedDocRef).set(any(Map.class));
+    }
+
+    @Test
+    void saveRecipeForUser_RecipeNotFound_ThrowsNotFoundException()
+            throws ExecutionException, InterruptedException {
+        // Arrange
+        String recipeId = "nonexistent";
+        String userId = "user123";
+
+        CollectionReference recipesRef = mock(CollectionReference.class);
+        when(firestore.collection("recipes")).thenReturn(recipesRef);
+        when(recipesRef.document(recipeId)).thenReturn(documentReference);
+        @SuppressWarnings("unchecked")
+        ApiFuture<com.google.cloud.firestore.DocumentSnapshot> snapFuture = mock(ApiFuture.class);
+        com.google.cloud.firestore.DocumentSnapshot snapDoc =
+                mock(com.google.cloud.firestore.DocumentSnapshot.class);
+        when(documentReference.get()).thenReturn(snapFuture);
+        when(snapFuture.get()).thenReturn(snapDoc);
+        when(snapDoc.exists()).thenReturn(false);
+
+        // Act & Assert
+        org.springframework.web.server.ResponseStatusException ex = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> recipeService.saveRecipeForUser(recipeId, userId));
+        assertEquals(org.springframework.http.HttpStatus.NOT_FOUND, ex.getStatusCode());
+    }
+
+    @Test
+    void saveRecipeForUser_FirestoreNotConfigured_ThrowsServiceUnavailable() {
+        RecipeService svc = new RecipeService();
+        ReflectionTestUtils.setField(svc, "recipesCollection", "recipes");
+
+        org.springframework.web.server.ResponseStatusException ex = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> svc.saveRecipeForUser("recipe123", "user123"));
+        assertEquals(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE, ex.getStatusCode());
+    }
+
+    // ── unsaveRecipeForUser ──────────────────────────────────────────────────
+
+    @Test
+    void unsaveRecipeForUser_Success() throws ExecutionException, InterruptedException {
+        // Arrange
+        String recipeId = "recipe123";
+        String userId = "user123";
+
+        CollectionReference savedTopRef = mock(CollectionReference.class);
+        DocumentReference savedUserDocRef = mock(DocumentReference.class);
+        CollectionReference savedSubRef = mock(CollectionReference.class);
+        DocumentReference savedDocRef = mock(DocumentReference.class);
+
+        when(firestore.collection("savedRecipes")).thenReturn(savedTopRef);
+        when(savedTopRef.document(userId)).thenReturn(savedUserDocRef);
+        when(savedUserDocRef.collection("recipes")).thenReturn(savedSubRef);
+        when(savedSubRef.document(recipeId)).thenReturn(savedDocRef);
+        when(savedDocRef.delete()).thenReturn(writeResultFuture);
+        when(writeResultFuture.get()).thenReturn(writeResult);
+
+        // Act & Assert (no exception)
+        recipeService.unsaveRecipeForUser(recipeId, userId);
+        verify(savedDocRef).delete();
+    }
+
+    @Test
+    void unsaveRecipeForUser_FirestoreNotConfigured_ThrowsServiceUnavailable() {
+        RecipeService svc = new RecipeService();
+        ReflectionTestUtils.setField(svc, "recipesCollection", "recipes");
+
+        org.springframework.web.server.ResponseStatusException ex = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> svc.unsaveRecipeForUser("recipe123", "user123"));
+        assertEquals(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE, ex.getStatusCode());
+    }
+
+    // ── getSavedRecipes ──────────────────────────────────────────────────────
+
+    @Test
+    void getSavedRecipes_NoFirestore_ReturnsEmptyPagedResponse() {
+        RecipeService svc = new RecipeService();
+        ReflectionTestUtils.setField(svc, "recipesCollection", "recipes");
+
+        PagedRecipeResponse response = svc.getSavedRecipes("user123", null, 20);
+
+        assertNotNull(response);
+        assertTrue(response.getRecipes().isEmpty());
+        assertEquals(20, response.getSize());
+        assertEquals(0, response.getTotalCount());
+        assertNull(response.getNextPageToken());
+    }
+
+    @Test
+    void getSavedRecipes_SizeExceedsMax_ThrowsBadRequest() {
+        RecipeService svc = new RecipeService();
+        ReflectionTestUtils.setField(svc, "recipesCollection", "recipes");
+
+        org.springframework.web.server.ResponseStatusException ex = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> svc.getSavedRecipes("user123", null, 101));
+        assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, ex.getStatusCode());
+    }
+
+    @Test
+    void getSavedRecipes_ZeroSize_ThrowsBadRequest() {
+        RecipeService svc = new RecipeService();
+        ReflectionTestUtils.setField(svc, "recipesCollection", "recipes");
+
+        org.springframework.web.server.ResponseStatusException ex = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> svc.getSavedRecipes("user123", null, 0));
+        assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, ex.getStatusCode());
+    }
+
+    @Test
+    void getSavedRecipes_InvalidPageToken_ThrowsBadRequest() {
+        RecipeService svc = new RecipeService();
+        ReflectionTestUtils.setField(svc, "recipesCollection", "recipes");
+
+        org.springframework.web.server.ResponseStatusException ex = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> svc.getSavedRecipes("user123", "not-valid-base64!!!", 10));
+        assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, ex.getStatusCode());
+    }
+
+    @Test
+    void getSavedRecipes_WithFirestore_ReturnsSavedRecipes()
+            throws ExecutionException, InterruptedException {
+        // Arrange saved-recipes subcollection
+        String userId = "user123";
+        String recipeId = "recipe123";
+
+        CollectionReference savedTopRef = mock(CollectionReference.class);
+        DocumentReference savedUserDocRef = mock(DocumentReference.class);
+        CollectionReference savedSubRef = mock(CollectionReference.class);
+
+        when(firestore.collection("savedRecipes")).thenReturn(savedTopRef);
+        when(savedTopRef.document(userId)).thenReturn(savedUserDocRef);
+        when(savedUserDocRef.collection("recipes")).thenReturn(savedSubRef);
+
+        // count
+        com.google.cloud.firestore.AggregateQuery aggQuery =
+                mock(com.google.cloud.firestore.AggregateQuery.class);
+        when(savedSubRef.count()).thenReturn(aggQuery);
+        @SuppressWarnings("unchecked")
+        ApiFuture<com.google.cloud.firestore.AggregateQuerySnapshot> cntFuture =
+                mock(ApiFuture.class);
+        com.google.cloud.firestore.AggregateQuerySnapshot cntSnap =
+                mock(com.google.cloud.firestore.AggregateQuerySnapshot.class);
+        when(aggQuery.get()).thenReturn(cntFuture);
+        when(cntFuture.get()).thenReturn(cntSnap);
+        when(cntSnap.getCount()).thenReturn(1L);
+
+        // orderBy → limit chain
+        Query orderedQuery = mock(Query.class);
+        when(savedSubRef.orderBy("savedAt", Query.Direction.DESCENDING)).thenReturn(orderedQuery);
+        Query limitedQuery = mock(Query.class);
+        when(orderedQuery.limit(20)).thenReturn(limitedQuery);
+
+        // query execution with one saved-doc entry
+        @SuppressWarnings("unchecked")
+        ApiFuture<QuerySnapshot> qFuture = mock(ApiFuture.class);
+        QuerySnapshot qSnap = mock(QuerySnapshot.class);
+        when(limitedQuery.get()).thenReturn(qFuture);
+        when(qFuture.get()).thenReturn(qSnap);
+
+        com.google.cloud.firestore.QueryDocumentSnapshot savedDocSnap =
+                mock(com.google.cloud.firestore.QueryDocumentSnapshot.class);
+        when(savedDocSnap.getId()).thenReturn(recipeId);
+        com.google.cloud.Timestamp ts =
+                com.google.cloud.Timestamp.ofTimeSecondsAndNanos(1743000000L, 0);
+        when(savedDocSnap.getTimestamp("savedAt")).thenReturn(ts);
+        when(qSnap.getDocuments()).thenReturn(List.of(savedDocSnap));
+        when(qSnap.isEmpty()).thenReturn(false);
+
+        // actual recipe fetch
+        CollectionReference recipesRef = mock(CollectionReference.class);
+        when(firestore.collection("recipes")).thenReturn(recipesRef);
+        when(recipesRef.document(recipeId)).thenReturn(documentReference);
+        @SuppressWarnings("unchecked")
+        ApiFuture<com.google.cloud.firestore.DocumentSnapshot> rFuture = mock(ApiFuture.class);
+        com.google.cloud.firestore.DocumentSnapshot rSnap =
+                mock(com.google.cloud.firestore.DocumentSnapshot.class);
+        when(documentReference.get()).thenReturn(rFuture);
+        when(rFuture.get()).thenReturn(rSnap);
+        when(rSnap.exists()).thenReturn(true);
+
+        Recipe recipe = Recipe.builder()
+                .id(recipeId).userId(userId).recipeName("Pasta").publicRecipe(false)
+                .createdAt(Instant.now()).updatedAt(Instant.now()).build();
+        when(rSnap.toObject(Recipe.class)).thenReturn(recipe);
+
+        // Act
+        PagedRecipeResponse response = recipeService.getSavedRecipes(userId, null, 20);
+
+        // Assert
+        assertNotNull(response);
+        assertEquals(1, response.getRecipes().size());
+        assertEquals(1L, response.getTotalCount());
+        assertTrue(response.getRecipes().get(0).isSavedByCurrentUser());
+        assertNotNull(response.getNextPageToken());
+    }
+
+    // ── isSavedByCurrentUser on getRecipe ────────────────────────────────────
+
+    @Test
+    void getRecipe_PopulatesIsSavedByCurrentUser_WhenSaved()
+            throws ExecutionException, InterruptedException {
+        String recipeId = "recipe123";
+        String userId = "user123";
+
+        // main recipe fetch
+        CollectionReference recipesRef = mock(CollectionReference.class);
+        when(firestore.collection("recipes")).thenReturn(recipesRef);
+        when(recipesRef.document(recipeId)).thenReturn(documentReference);
+        @SuppressWarnings("unchecked")
+        ApiFuture<com.google.cloud.firestore.DocumentSnapshot> rFuture = mock(ApiFuture.class);
+        com.google.cloud.firestore.DocumentSnapshot rSnap =
+                mock(com.google.cloud.firestore.DocumentSnapshot.class);
+        when(documentReference.get()).thenReturn(rFuture);
+        when(rFuture.get()).thenReturn(rSnap);
+        when(rSnap.exists()).thenReturn(true);
+        Recipe recipe = Recipe.builder()
+                .id(recipeId).userId(userId).recipeName("Pasta").publicRecipe(false)
+                .createdAt(Instant.now()).updatedAt(Instant.now()).build();
+        when(rSnap.toObject(Recipe.class)).thenReturn(recipe);
+
+        // saved-status check
+        CollectionReference savedTopRef = mock(CollectionReference.class);
+        DocumentReference savedUserDocRef = mock(DocumentReference.class);
+        CollectionReference savedSubRef = mock(CollectionReference.class);
+        DocumentReference savedRecipeDocRef = mock(DocumentReference.class);
+
+        when(firestore.collection("savedRecipes")).thenReturn(savedTopRef);
+        when(savedTopRef.document(userId)).thenReturn(savedUserDocRef);
+        when(savedUserDocRef.collection("recipes")).thenReturn(savedSubRef);
+        when(savedSubRef.document(recipeId)).thenReturn(savedRecipeDocRef);
+
+        @SuppressWarnings("unchecked")
+        ApiFuture<com.google.cloud.firestore.DocumentSnapshot> savedFuture = mock(ApiFuture.class);
+        com.google.cloud.firestore.DocumentSnapshot savedSnap =
+                mock(com.google.cloud.firestore.DocumentSnapshot.class);
+        when(savedRecipeDocRef.get()).thenReturn(savedFuture);
+        when(savedFuture.get()).thenReturn(savedSnap);
+        when(savedSnap.exists()).thenReturn(true);  // recipe IS saved
+
+        // Act
+        RecipeResponse response = recipeService.getRecipe(recipeId, userId);
+
+        // Assert
+        assertNotNull(response);
+        assertTrue(response.isSavedByCurrentUser());
+    }
 }
+
