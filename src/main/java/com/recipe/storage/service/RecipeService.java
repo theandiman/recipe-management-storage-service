@@ -315,8 +315,7 @@ public class RecipeService {
       Recipe recipe = document.toObject(Recipe.class);
       if (recipe == null) {
         log.error("Failed to deserialize recipe: {}", recipeId);
-        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-            "Failed to load recipe");
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
       }
 
       // Return 404 for private recipes to avoid leaking existence
