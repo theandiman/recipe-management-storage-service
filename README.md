@@ -1,10 +1,10 @@
-[![CI/CD Pipeline](https://github.com/theandiman/recipe-management-storage-service/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/theandiman/recipe-management-storage-service/actions/workflows/ci-cd.yml)
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=theandiman_recipe-management-storage-service&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=theandiman_recipe-management-storage-service)
-[![Sonar Tech Debt](https://img.shields.io/sonar/tech_debt/theandiman_recipe-management-storage-service?server=https://sonarcloud.io)](https://sonarcloud.io/summary/new_code?id=theandiman_recipe-management-storage-service)
-[![Sonar Violations](https://img.shields.io/sonar/violations/theandiman_recipe-management-storage-service?server=https://sonarcloud.io)](https://sonarcloud.io/summary/new_code?id=theandiman_recipe-management-storage-service)
-[![Known Vulnerabilities](https://snyk.io/test/github/theandiman/recipe-management-storage-service/badge.svg)](https://snyk.io/test/github/theandiman/recipe-management-storage-service)
+[![CI/CD Pipeline](https://github.com/theandiman/recipe-management-service/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/theandiman/recipe-management-service/actions/workflows/ci-cd.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=theandiman_recipe-management-service&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=theandiman_recipe-management-service)
+[![Sonar Tech Debt](https://img.shields.io/sonar/tech_debt/theandiman_recipe-management-service?server=https://sonarcloud.io)](https://sonarcloud.io/summary/new_code?id=theandiman_recipe-management-service)
+[![Sonar Violations](https://img.shields.io/sonar/violations/theandiman_recipe-management-service?server=https://sonarcloud.io)](https://sonarcloud.io/summary/new_code?id=theandiman_recipe-management-service)
+[![Known Vulnerabilities](https://snyk.io/test/github/theandiman/recipe-management-service/badge.svg)](https://snyk.io/test/github/theandiman/recipe-management-service)
 
-# Recipe Storage Service
+# Recipe Management Service
 
 A Spring Boot microservice for persisting and managing recipe data using Google Cloud Firestore.
 
@@ -119,7 +119,7 @@ environment:
 
 ## API Endpoints
 
-📘 **[API Documentation](https://theandiman.github.io/recipe-management-storage-service/)** - View the interactive Swagger UI for full API details.
+📘 **[API Documentation](https://theandiman.github.io/recipe-management-service/)** - View the interactive Swagger UI for full API details.
 
 ### Save Recipe
 ```http
@@ -175,8 +175,8 @@ Content-Type: application/json
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/theandiman/recipe-management-storage-service.git
-   cd recipe-management-storage-service
+   git clone https://github.com/theandiman/recipe-management-service.git
+   cd recipe-management-service
    ```
 
 2. **Set up Firebase credentials**

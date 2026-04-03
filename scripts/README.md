@@ -48,7 +48,7 @@ Migrates recipe documents from old schema to new schema:
 
 ```bash
 # From the storage-service directory
-cd /Users/andy/code/recipe-management/recipe-management-storage-service
+cd /Users/andy/code/recipe-management/recipe-management-service
 
 # Run the migration
 node scripts/migrate-recipe-data.js
