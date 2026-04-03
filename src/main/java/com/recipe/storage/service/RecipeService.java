@@ -1,6 +1,8 @@
 package com.recipe.storage.service;
 
 import com.google.api.core.ApiFuture;
+import com.google.cloud.Timestamp;
+import com.google.cloud.firestore.AggregateQuerySnapshot;
 import com.google.cloud.firestore.DocumentReference;
 import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.cloud.firestore.Firestore;
@@ -10,9 +12,12 @@ import com.google.cloud.firestore.WriteResult;
 import com.recipe.shared.model.NutritionalInfo;
 import com.recipe.shared.model.Recipe;
 import com.recipe.storage.dto.CreateRecipeRequest;
+import com.recipe.storage.dto.PagedRecipeResponse;
 import com.recipe.storage.dto.RecipeResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -237,22 +242,51 @@ public class RecipeService {
   }
 
   /**
-   * Get all public recipes.
+   * Get public recipes with cursor-based pagination.
    *
-   * @return List of public recipes
+   * @param pageToken Opaque cursor token from a previous response (null for first page)
+   * @param size Number of recipes per page (min 1, max 100)
+   * @return Paginated list of public recipes
    */
-  public List<RecipeResponse> getPublicRecipes() {
+  public PagedRecipeResponse getPublicRecipes(String pageToken, int size) {
+    if (size < 1) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Page size must be at least 1");
+    }
+    if (size > 100) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Page size must not exceed 100");
+    }
+
+    // Decode and validate the cursor token early to fail fast on bad input
+    Timestamp cursor = null;
+    if (pageToken != null && !pageToken.isEmpty()) {
+      cursor = decodePageToken(pageToken);
+    }
+
     if (firestore == null) {
-      log.warn("Firestore not configured - returning empty list");
-      return new ArrayList<>();
+      log.warn("Firestore not configured - returning empty paged response");
+      return PagedRecipeResponse.builder()
+          .recipes(new ArrayList<>())
+          .size(size)
+          .totalCount(0)
+          .nextPageToken(null)
+          .build();
     }
 
     try {
-      // TODO: Add composite index on isPublic + createdAt for better sorting
-      Query query = firestore.collection(recipesCollection)
+      Query baseQuery = firestore.collection(recipesCollection)
           .whereEqualTo("isPublic", true);
 
-      ApiFuture<QuerySnapshot> future = query.get();
+      ApiFuture<AggregateQuerySnapshot> countFuture = baseQuery.count().get();
+      AggregateQuerySnapshot countSnapshot = countFuture.get();
+      final long totalCount = countSnapshot.getCount();
+
+      Query pagedQuery = baseQuery.orderBy("createdAt", Query.Direction.DESCENDING);
+      if (cursor != null) {
+        pagedQuery = pagedQuery.startAfter(cursor);
+      }
+      pagedQuery = pagedQuery.limit(size);
+
+      ApiFuture<QuerySnapshot> future = pagedQuery.get();
       QuerySnapshot querySnapshot = future.get();
 
       List<RecipeResponse> recipes = new ArrayList<>();
@@ -261,15 +295,70 @@ public class RecipeService {
         recipes.add(mapToResponse(recipe));
       });
 
-      // Sort in-memory by createdAt (newest first)
-      recipes.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
-
-      log.info("Found {} public recipes", recipes.size());
-      return recipes;
+      String nextPageToken = encodeNextPageToken(querySnapshot);
+      log.info("Found {} public recipes (size={}, total={})",
+          recipes.size(), size, totalCount);
+      return PagedRecipeResponse.builder()
+          .recipes(recipes)
+          .size(size)
+          .totalCount(totalCount)
+          .nextPageToken(nextPageToken)
+          .build();
     } catch (InterruptedException | ExecutionException e) {
       log.error("Error fetching public recipes from Firestore", e);
       throw new RuntimeException("Failed to fetch public recipes", e);
     }
+  }
+
+  /**
+   * Decodes an opaque page token into a Firestore {@link Timestamp} cursor.
+   *
+   * <p>The token is a URL-safe base64 string encoding {@code "<seconds>,<nanos>"}.
+   * Throws {@code 400 Bad Request} if the token is malformed or cannot be decoded.
+   *
+   * @param pageToken the opaque cursor token from a previous paged response
+   * @return the decoded Firestore Timestamp to pass to {@code startAfter()}
+   */
+  private Timestamp decodePageToken(String pageToken) {
+    try {
+      byte[] decoded = Base64.getUrlDecoder().decode(pageToken);
+      String cursor = new String(decoded, StandardCharsets.UTF_8);
+      String[] parts = cursor.split(",", 2);
+      if (parts.length != 2) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid page token");
+      }
+      return Timestamp.ofTimeSecondsAndNanos(
+          Long.parseLong(parts[0]), Integer.parseInt(parts[1]));
+    } catch (ResponseStatusException e) {
+      throw e;
+    } catch (Exception e) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid page token");
+    }
+  }
+
+  /**
+   * Encodes the {@code createdAt} timestamp of the last document in a query snapshot
+   * into an opaque page token for cursor-based pagination.
+   *
+   * <p>Returns {@code null} when the snapshot is empty or the last document has no
+   * {@code createdAt} timestamp, indicating there is no next page.
+   *
+   * @param querySnapshot the Firestore query result snapshot
+   * @return a URL-safe base64 cursor token, or {@code null} if no next page exists
+   */
+  private String encodeNextPageToken(QuerySnapshot querySnapshot) {
+    if (querySnapshot.isEmpty()) {
+      return null;
+    }
+    List<? extends DocumentSnapshot> docs = querySnapshot.getDocuments();
+    DocumentSnapshot lastDoc = docs.get(docs.size() - 1);
+    Timestamp lastCreatedAt = lastDoc.getTimestamp("createdAt");
+    if (lastCreatedAt == null) {
+      return null;
+    }
+    String cursor = lastCreatedAt.getSeconds() + "," + lastCreatedAt.getNanos();
+    return Base64.getUrlEncoder().withoutPadding()
+        .encodeToString(cursor.getBytes(StandardCharsets.UTF_8));
   }
 
   /**
@@ -291,7 +380,7 @@ public class RecipeService {
       ApiFuture<DocumentSnapshot> future = docRef.get();
       DocumentSnapshot document = future.get();
 
-      if (!document.exists()) {
+      if (document == null || !document.exists()) {
         log.warn("Public recipe not found: {}", recipeId);
         throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
       }
