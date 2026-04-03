@@ -15,7 +15,7 @@ concurrency:
 env:
   GCP_REGISTRY: europe-west2-docker.pkg.dev
   GITHUB_OWNER: ${{ github.repository_owner }}
-  SERVICE_NAME: recipe-storage-service
+  SERVICE_NAME: recipe-management-service
   REGION: europe-west2
 
 jobs:
@@ -158,13 +158,13 @@ jobs:
 
         # Build Docker image
         docker build \
-          -t $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-storage/$SERVICE_NAME:$GITHUB_SHA \
-          -t $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-storage/$SERVICE_NAME:$VERSION \
+          -t $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-management/$SERVICE_NAME:$GITHUB_SHA \
+          -t $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-management/$SERVICE_NAME:$VERSION \
           .
 
         # Push to GCP Artifact Registry
-        docker push $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-storage/$SERVICE_NAME:$GITHUB_SHA
-        docker push $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-storage/$SERVICE_NAME:$VERSION
+        docker push $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-management/$SERVICE_NAME:$GITHUB_SHA
+        docker push $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-management/$SERVICE_NAME:$VERSION
 
   deploy:
     name: Deploy to Cloud Run
@@ -194,7 +194,7 @@ jobs:
       run: |
         VERSION=$(cat .build_version)
         gcloud run services update $SERVICE_NAME \
-          --image $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-storage/$SERVICE_NAME:$VERSION \
+          --image $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-management/$SERVICE_NAME:$VERSION \
           --region $REGION
 
         # Get the service URL for security scanning
