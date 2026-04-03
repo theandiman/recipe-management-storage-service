@@ -741,23 +741,34 @@ public class RecipeService {
       QuerySnapshot querySnapshot = pagedQuery.get().get();
 
       List<RecipeResponse> recipes = new ArrayList<>();
+      List<String> recipeIds = new ArrayList<>();
+      List<DocumentReference> recipeRefs = new ArrayList<>();
       for (DocumentSnapshot savedDoc : querySnapshot.getDocuments()) {
         String recipeId = savedDoc.getId();
-        try {
-          DocumentSnapshot recipeDoc = firestore
-              .collection(recipesCollection)
-              .document(recipeId)
-              .get().get();
-          if (recipeDoc.exists()) {
-            Recipe recipe = recipeDoc.toObject(Recipe.class);
-            if (recipe != null) {
-              RecipeResponse response = mapToResponse(recipe);
-              response.setSavedByCurrentUser(true);
-              recipes.add(response);
+        recipeIds.add(recipeId);
+        recipeRefs.add(firestore.collection(recipesCollection).document(recipeId));
+      }
+
+      if (!recipeRefs.isEmpty()) {
+        List<DocumentSnapshot> recipeDocs = firestore
+            .getAll(recipeRefs.toArray(new DocumentReference[0]))
+            .get();
+
+        for (int i = 0; i < recipeDocs.size(); i++) {
+          String recipeId = recipeIds.get(i);
+          try {
+            DocumentSnapshot recipeDoc = recipeDocs.get(i);
+            if (recipeDoc.exists()) {
+              Recipe recipe = recipeDoc.toObject(Recipe.class);
+              if (recipe != null) {
+                RecipeResponse response = mapToResponse(recipe);
+                response.setSavedByCurrentUser(true);
+                recipes.add(response);
+              }
             }
+          } catch (Exception e) {
+            log.warn("Failed to map recipe {} for saved list: {}", recipeId, e.getMessage());
           }
-        } catch (Exception e) {
-          log.warn("Failed to fetch recipe {} for saved list: {}", recipeId, e.getMessage());
         }
       }
 
