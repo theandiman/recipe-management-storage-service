@@ -104,7 +104,7 @@ The baseline scan performs passive security checks including:
 After each main branch build, reports are uploaded to:
 
 ```
-gs://${PROJECT_ID}-security-reports/recipe-storage-service/zap/${TIMESTAMP}/
+gs://${PROJECT_ID}-security-reports/recipe-management-service/zap/${TIMESTAMP}/
 ```
 
 Three report formats are available:
@@ -118,10 +118,10 @@ Check the Cloud Build logs for the direct link to the HTML report, or access via
 
 ```bash
 # List recent scans
-gsutil ls gs://${PROJECT_ID}-security-reports/recipe-storage-service/zap/
+gsutil ls gs://${PROJECT_ID}-security-reports/recipe-management-service/zap/
 
 # Download a specific HTML report (replace YYYYMMDD-HHMMSS with actual timestamp)
-gsutil cp gs://${PROJECT_ID}-security-reports/recipe-storage-service/zap/YYYYMMDD-HHMMSS/zap-report.html .
+gsutil cp gs://${PROJECT_ID}-security-reports/recipe-management-service/zap/YYYYMMDD-HHMMSS/zap-report.html .
 ```
 
 ## Scan Configuration

@@ -7,7 +7,7 @@ set -e
 
 # Configuration - update these versions as needed
 OTEL_AGENT_VERSION="${OTEL_AGENT_VERSION:-v2.21.0}"
-SERVICE_NAME="${SERVICE_NAME:-recipe-storage-service}"
+SERVICE_NAME="${SERVICE_NAME:-recipe-management-service}"
 SERVICE_VERSION="${SERVICE_VERSION:-0.0.1-SNAPSHOT}"
 
 echo "🚀 Starting ${SERVICE_NAME} with Honeycomb observability..."

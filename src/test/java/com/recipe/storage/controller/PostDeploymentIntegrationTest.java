@@ -272,9 +272,9 @@ class PostDeploymentIntegrationTest {
 
         mockMvc.perform(get("/api/recipes/public"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$[?(@.id == '" + createdRecipeId + "')]").exists())
-                .andExpect(jsonPath("$[?(@.id == '" + createdRecipeId + "')].isPublic").value(true));
+                .andExpect(jsonPath("$.recipes").isArray())
+                .andExpect(jsonPath("$.recipes[?(@.id == '" + createdRecipeId + "')]").exists())
+                .andExpect(jsonPath("$.recipes[?(@.id == '" + createdRecipeId + "')].isPublic").value(true));
     }
 
     @Test
@@ -317,8 +317,8 @@ class PostDeploymentIntegrationTest {
 
         mockMvc.perform(get("/api/recipes/public"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$[?(@.id == '" + createdRecipeId + "')]").doesNotExist());
+                .andExpect(jsonPath("$.recipes").isArray())
+                .andExpect(jsonPath("$.recipes[?(@.id == '" + createdRecipeId + "')]").doesNotExist());
     }
 
     // ========================================
@@ -395,7 +395,7 @@ class PostDeploymentIntegrationTest {
         // Public endpoint should work without X-User-ID header
         mockMvc.perform(get("/api/recipes/public"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray());
+                .andExpect(jsonPath("$.recipes").isArray());
     }
 
     @Test

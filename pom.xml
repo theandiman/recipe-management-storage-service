@@ -8,20 +8,20 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.8</version>
+        <version>3.5.13</version>
         <relativePath/>
     </parent>
 
     <groupId>com.recipe</groupId>
-    <artifactId>recipe-storage-service</artifactId>
-    <version>0.0.32-SNAPSHOT</version>
-    <name>recipe-storage-service</name>
-    <description>Recipe storage service using Spring Boot and Firestore</description>
+    <artifactId>recipe-management-service</artifactId>
+    <version>0.0.33-SNAPSHOT</version>
+    <name>recipe-management-service</name>
+    <description>Recipe management service using Spring Boot and Firestore</description>
 
     <properties>
         <java.version>21</java.version>
         <spring-cloud.version>2023.0.3</spring-cloud.version>
-        <firebase-admin.version>9.7.0</firebase-admin.version>
+        <firebase-admin.version>9.7.1</firebase-admin.version>
         <lombok.version>1.18.42</lombok.version>
     </properties>
          
@@ -85,7 +85,7 @@
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>2.8.14</version>
+            <version>2.8.16</version>
         </dependency>
 
         <!-- Structured logging -->
