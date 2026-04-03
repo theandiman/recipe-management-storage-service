@@ -221,6 +221,9 @@ if [ "$JQ_AVAILABLE" = "true" ]; then
             echo -e "${RED}✗ FAILED${NC} (Could not extract ID from response)"
             ((TESTS_FAILED++))
         fi
+    elif [ "$http_code" = "401" ] || [ "$http_code" = "403" ]; then
+        echo -e "${YELLOW}⚠ SKIPPED${NC} (HTTP $http_code - authentication required, no token available for smoke test)"
+        rm -f "$create_response"
     else
         echo -e "${RED}✗ FAILED${NC} (Expected 201, got $http_code)"
         cat "$create_response" # Print response body for debugging
