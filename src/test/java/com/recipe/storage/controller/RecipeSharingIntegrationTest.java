@@ -14,8 +14,8 @@ import java.util.List;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -55,9 +55,16 @@ class RecipeSharingIntegrationTest {
 
         @Test
         void getPublicRecipes_ReturnsOk() throws Exception {
+                // Firestore is not mocked, so returns an empty paged envelope
                 mockMvc.perform(get("/api/recipes/public"))
-                                .andExpect(status().isOk());
-                // Expect empty list because Firestore is not mocked
-                // .andExpect(jsonPath("$").isArray());
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.recipes").isArray())
+                                .andExpect(jsonPath("$.totalCount").value(0));
+        }
+
+        @Test
+        void getPublicRecipe_NoFirestore_ReturnsServiceUnavailable() throws Exception {
+                mockMvc.perform(get("/api/recipes/some-recipe-id/public"))
+                                .andExpect(status().isServiceUnavailable());
         }
 }

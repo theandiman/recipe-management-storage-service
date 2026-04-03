@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Post-deployment test script for recipe-storage-service
+# Post-deployment test script for recipe-management-service
 # Tests key endpoints to verify the deployment is working correctly
 
 set -e
