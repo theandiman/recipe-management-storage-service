@@ -120,10 +120,13 @@ public class UserProfileService {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       log.warn("Interrupted while counting public recipes for uid={}", uid);
+      throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+          "Failed to fetch user profile");
     } catch (ExecutionException e) {
       log.warn("Failed to count public recipes for uid={}: {}", uid, e.getMessage());
+      throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+          "Failed to fetch user profile");
     }
-    return 0L;
   }
 
   private UserProfileResponse buildMockProfile(String uid) {
