@@ -185,6 +185,37 @@ public class FollowService {
   }
 
   /**
+   * Check whether one user follows another.
+   *
+   * <p>Returns {@code false} rather than throwing when Firestore is unavailable, so callers
+   * can use this for optional profile enrichment without hard-failing the request.
+   *
+   * @param followerId the Firebase UID of the potential follower
+   * @param followedId the Firebase UID of the user potentially being followed
+   * @return {@code true} if the follow relationship exists, {@code false} otherwise
+   */
+  public boolean isFollowing(String followerId, String followedId) {
+    if (firestore == null) {
+      return false;
+    }
+    try {
+      DocumentReference followDocRef = firestore.collection(followsCollection)
+          .document(followerId)
+          .collection(FOLLOWING_SUBCOLLECTION)
+          .document(followedId);
+      DocumentSnapshot followDoc = followDocRef.get().get();
+      return followDoc.exists();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      log.warn("Interrupted while checking follow status {} -> {}", followerId, followedId, e);
+      return false;
+    } catch (ExecutionException e) {
+      log.warn("Error checking follow status {} -> {}", followerId, followedId, e);
+      return false;
+    }
+  }
+
+  /**
    * Get a paginated list of users that the given user is following.
    *
    * @param uid       the Firebase UID of the user whose following list to retrieve
