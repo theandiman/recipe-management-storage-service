@@ -15,7 +15,7 @@ concurrency:
 jobs:
   ci:
     name: Build and Test
-    uses: theandiman/recipe-management/.github/workflows/backend-java-ci.yml@7694fc853072449eb6e0617ed017ac48933688ae
+    uses: theandiman/recipe-management/.github/workflows/backend-java-ci.yml@8629e2a0e0d9b2d97c647dd51f60f3d08b399535
     permissions:
       contents: read
       actions: write
@@ -31,7 +31,7 @@ jobs:
     name: Deploy
     needs: ci
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    uses: theandiman/recipe-management/.github/workflows/backend-java-cloud-run-cd.yml@7694fc853072449eb6e0617ed017ac48933688ae
+    uses: theandiman/recipe-management/.github/workflows/backend-java-cloud-run-cd.yml@8629e2a0e0d9b2d97c647dd51f60f3d08b399535
     permissions:
       contents: write
       actions: write
@@ -45,3 +45,4 @@ jobs:
       GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
       GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
       GCP_DEPLOY_SA: ${{ secrets.GCP_DEPLOY_SA }}
+      GIT_PAT: ${{ secrets.GIT_PAT }}
