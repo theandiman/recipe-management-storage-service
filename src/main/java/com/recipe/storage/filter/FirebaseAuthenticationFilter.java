@@ -199,6 +199,9 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
     } catch (FirebaseAuthException e) {
       log.debug("Optional auth token validation failed for public profile endpoint: {}",
           e.getMessage());
+    } catch (RuntimeException e) {
+      log.warn("Optional auth could not be evaluated for public profile endpoint; proceeding "
+          + "without userId", e);
     }
   }
 }

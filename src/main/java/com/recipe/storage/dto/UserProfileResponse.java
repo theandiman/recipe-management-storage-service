@@ -1,5 +1,6 @@
 package com.recipe.storage.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,5 +22,6 @@ public class UserProfileResponse {
   private long publicRecipeCount;
   private long followerCount;
   private long followingCount;
+  @JsonProperty("isFollowedByCurrentUser")
   private boolean isFollowedByCurrentUser;
 }
