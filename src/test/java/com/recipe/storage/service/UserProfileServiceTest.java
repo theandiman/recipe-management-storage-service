@@ -104,7 +104,7 @@ class UserProfileServiceTest {
     }
 
     @Test
-    void getUserProfile_AuthenticatedCaller_IsFollowed_ReturnsTrue()
+    void getUserProfile_AuthenticatedCallerFollowsUser_ReturnsIsFollowedTrue()
             throws ExecutionException, InterruptedException {
         // Arrange
         String uid = "user123";
@@ -156,7 +156,7 @@ class UserProfileServiceTest {
     }
 
     @Test
-    void getUserProfile_AuthenticatedCaller_NotFollowed_ReturnsFalse()
+    void getUserProfile_AuthenticatedCallerDoesNotFollowUser_ReturnsIsFollowedFalse()
             throws ExecutionException, InterruptedException {
         // Arrange
         String uid = "user123";
@@ -209,7 +209,7 @@ class UserProfileServiceTest {
     }
 
     @Test
-    void getUserProfile_UnauthenticatedCaller_IsFollowedByCurrentUserIsFalse()
+    void getUserProfile_UnauthenticatedCaller_ReturnsIsFollowedFalse()
             throws ExecutionException, InterruptedException {
         // Arrange
         String uid = "user123";
