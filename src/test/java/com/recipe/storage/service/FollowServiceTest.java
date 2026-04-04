@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -743,5 +744,99 @@ class FollowServiceTest {
         assertNull(user.getPhotoUrl());
         // No followedAt timestamp -> no next page token
         assertNull(result.getNextPageToken());
+    }
+
+    // -------------------------------------------------------------------------
+    // isFollowing tests
+    // -------------------------------------------------------------------------
+
+    @Test
+    void isFollowing_NullFirestore_ReturnsFalse() {
+        FollowService noFirestoreService = new FollowService();
+        ReflectionTestUtils.setField(noFirestoreService, "followsCollection", "follows");
+        ReflectionTestUtils.setField(noFirestoreService, "usersCollection", "users");
+
+        assertFalse(noFirestoreService.isFollowing("follower1", "followed1"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void isFollowing_DocumentExists_ReturnsTrue() throws Exception {
+        CollectionReference followsCol = mock(CollectionReference.class);
+        DocumentReference followerDoc = mock(DocumentReference.class);
+        CollectionReference followingSubcol = mock(CollectionReference.class);
+        DocumentReference followDocRef = mock(DocumentReference.class);
+        ApiFuture<DocumentSnapshot> future = mock(ApiFuture.class);
+        DocumentSnapshot snapshot = mock(DocumentSnapshot.class);
+
+        when(firestore.collection("follows")).thenReturn(followsCol);
+        when(followsCol.document("follower1")).thenReturn(followerDoc);
+        when(followerDoc.collection("following")).thenReturn(followingSubcol);
+        when(followingSubcol.document("followed1")).thenReturn(followDocRef);
+        when(followDocRef.get()).thenReturn(future);
+        when(future.get()).thenReturn(snapshot);
+        when(snapshot.exists()).thenReturn(true);
+
+        assertTrue(followService.isFollowing("follower1", "followed1"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void isFollowing_DocumentNotExists_ReturnsFalse() throws Exception {
+        CollectionReference followsCol = mock(CollectionReference.class);
+        DocumentReference followerDoc = mock(DocumentReference.class);
+        CollectionReference followingSubcol = mock(CollectionReference.class);
+        DocumentReference followDocRef = mock(DocumentReference.class);
+        ApiFuture<DocumentSnapshot> future = mock(ApiFuture.class);
+        DocumentSnapshot snapshot = mock(DocumentSnapshot.class);
+
+        when(firestore.collection("follows")).thenReturn(followsCol);
+        when(followsCol.document("follower1")).thenReturn(followerDoc);
+        when(followerDoc.collection("following")).thenReturn(followingSubcol);
+        when(followingSubcol.document("followed1")).thenReturn(followDocRef);
+        when(followDocRef.get()).thenReturn(future);
+        when(future.get()).thenReturn(snapshot);
+        when(snapshot.exists()).thenReturn(false);
+
+        assertFalse(followService.isFollowing("follower1", "followed1"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void isFollowing_InterruptedException_ReturnsFalse() throws Exception {
+        CollectionReference followsCol = mock(CollectionReference.class);
+        DocumentReference followerDoc = mock(DocumentReference.class);
+        CollectionReference followingSubcol = mock(CollectionReference.class);
+        DocumentReference followDocRef = mock(DocumentReference.class);
+        ApiFuture<DocumentSnapshot> future = mock(ApiFuture.class);
+
+        when(firestore.collection("follows")).thenReturn(followsCol);
+        when(followsCol.document("follower1")).thenReturn(followerDoc);
+        when(followerDoc.collection("following")).thenReturn(followingSubcol);
+        when(followingSubcol.document("followed1")).thenReturn(followDocRef);
+        when(followDocRef.get()).thenReturn(future);
+        when(future.get()).thenThrow(new InterruptedException("interrupted"));
+
+        assertFalse(followService.isFollowing("follower1", "followed1"));
+        assertTrue(Thread.interrupted()); // clear the interrupted flag set by the method
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void isFollowing_ExecutionException_ReturnsFalse() throws Exception {
+        CollectionReference followsCol = mock(CollectionReference.class);
+        DocumentReference followerDoc = mock(DocumentReference.class);
+        CollectionReference followingSubcol = mock(CollectionReference.class);
+        DocumentReference followDocRef = mock(DocumentReference.class);
+        ApiFuture<DocumentSnapshot> future = mock(ApiFuture.class);
+
+        when(firestore.collection("follows")).thenReturn(followsCol);
+        when(followsCol.document("follower1")).thenReturn(followerDoc);
+        when(followerDoc.collection("following")).thenReturn(followingSubcol);
+        when(followingSubcol.document("followed1")).thenReturn(followDocRef);
+        when(followDocRef.get()).thenReturn(future);
+        when(future.get()).thenThrow(new ExecutionException("firestore error", new RuntimeException()));
+
+        assertFalse(followService.isFollowing("follower1", "followed1"));
     }
 }

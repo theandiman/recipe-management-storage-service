@@ -87,9 +87,12 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
         return;
       }
 
-      // Skip auth for public user profile endpoint (read-only methods only)
+      // Skip auth for public user profile endpoint (read-only methods only).
+      // Optionally extract the authenticated user ID so the service can populate
+      // isFollowedByCurrentUser when a valid token is supplied.
       if (path.matches("/api/users/[^/]+/profile")
           && ("GET".equals(method) || "HEAD".equals(method))) {
+        trySetOptionalUserId(request);
         filterChain.doFilter(request, response);
         return;
       }
@@ -161,6 +164,44 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
       // Clean up MDC to prevent memory leaks
       MDC.remove("user.id");
       MDC.remove("request.id");
+    }
+  }
+
+  /**
+   * Attempts to extract and set the authenticated user ID for a public endpoint that supports
+   * optional authentication. Never rejects the request: if no token is provided or the token is
+   * invalid the request simply proceeds without a {@code userId} attribute.
+   *
+   * <p>When {@code auth.enabled=false} the user ID is read from the {@code userId} request header
+   * (dev/test shortcut). When {@code auth.enabled=true} a Bearer token is validated via Firebase.
+   */
+  private void trySetOptionalUserId(HttpServletRequest request) {
+    if (!authEnabled) {
+      String userId = request.getHeader("userId");
+      if (userId != null && !userId.isEmpty()) {
+        request.setAttribute("userId", userId);
+        MDC.put("user.id", userId);
+      }
+      return;
+    }
+
+    String authHeader = request.getHeader("Authorization");
+    if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
+      return;
+    }
+
+    try {
+      String idToken = authHeader.substring(BEARER_PREFIX.length());
+      FirebaseToken decodedToken = FirebaseAuth.getInstance().verifyIdToken(idToken);
+      String uid = decodedToken.getUid();
+      request.setAttribute("userId", uid);
+      MDC.put("user.id", uid);
+    } catch (FirebaseAuthException e) {
+      log.debug("Optional auth token validation failed for public profile endpoint: {}",
+          e.getMessage());
+    } catch (RuntimeException e) {
+      log.warn("Optional auth could not be evaluated for public profile endpoint; proceeding "
+          + "without userId", e);
     }
   }
 }

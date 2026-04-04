@@ -262,4 +262,131 @@ class FirebaseAuthenticationFilterTest {
             verifyNoInteractions(filterChain);
         }
     }
+
+    // -------------------------------------------------------------------------
+    // trySetOptionalUserId tests (exercised via the /api/users/{uid}/profile path)
+    // -------------------------------------------------------------------------
+
+    @Test
+    void doFilterInternal_UserProfilePath_AuthDisabled_WithUserIdHeader_SetsUserIdAndProceeds()
+            throws ServletException, IOException {
+        // Arrange
+        ReflectionTestUtils.setField(filter, "authEnabled", false);
+        when(request.getMethod()).thenReturn("GET");
+        when(request.getRequestURI()).thenReturn("/api/users/user123/profile");
+        when(request.getHeader("userId")).thenReturn("caller456");
+
+        // Act
+        filter.doFilterInternal(request, response, filterChain);
+
+        // Assert
+        verify(request).setAttribute("userId", "caller456");
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    void doFilterInternal_UserProfilePath_AuthDisabled_NoUserIdHeader_ProceedsWithoutUserId()
+            throws ServletException, IOException {
+        // Arrange
+        ReflectionTestUtils.setField(filter, "authEnabled", false);
+        when(request.getMethod()).thenReturn("GET");
+        when(request.getRequestURI()).thenReturn("/api/users/user123/profile");
+        when(request.getHeader("userId")).thenReturn(null);
+
+        // Act
+        filter.doFilterInternal(request, response, filterChain);
+
+        // Assert — no userId attribute set, but the request is allowed through
+        verify(request, never()).setAttribute(anyString(), anyString());
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    void doFilterInternal_UserProfilePath_AuthEnabled_NoAuthHeader_ProceedsWithoutUserId()
+            throws ServletException, IOException {
+        // Arrange
+        ReflectionTestUtils.setField(filter, "authEnabled", true);
+        when(request.getMethod()).thenReturn("GET");
+        when(request.getRequestURI()).thenReturn("/api/users/user123/profile");
+        when(request.getHeader("Authorization")).thenReturn(null);
+
+        // Act
+        filter.doFilterInternal(request, response, filterChain);
+
+        // Assert — no userId set, request allowed through (optional auth)
+        verify(request, never()).setAttribute(anyString(), anyString());
+        verify(filterChain).doFilter(request, response);
+        verify(response, never()).sendError(anyInt(), anyString());
+    }
+
+    @Test
+    void doFilterInternal_UserProfilePath_AuthEnabled_ValidToken_SetsUserIdAndProceeds()
+            throws Exception {
+        // Arrange
+        ReflectionTestUtils.setField(filter, "authEnabled", true);
+        when(request.getMethod()).thenReturn("GET");
+        when(request.getRequestURI()).thenReturn("/api/users/user123/profile");
+        when(request.getHeader("Authorization")).thenReturn("Bearer valid-token");
+        when(firebaseToken.getUid()).thenReturn("caller456");
+
+        // Act & Assert
+        try (MockedStatic<FirebaseAuth> mockedFirebaseAuth = mockStatic(FirebaseAuth.class)) {
+            mockedFirebaseAuth.when(FirebaseAuth::getInstance).thenReturn(firebaseAuth);
+            when(firebaseAuth.verifyIdToken("valid-token")).thenReturn(firebaseToken);
+
+            filter.doFilterInternal(request, response, filterChain);
+
+            verify(request).setAttribute("userId", "caller456");
+            verify(filterChain).doFilter(request, response);
+            verify(response, never()).sendError(anyInt(), anyString());
+        }
+    }
+
+    @Test
+    void doFilterInternal_UserProfilePath_AuthEnabled_InvalidToken_ProceedsWithoutUserId()
+            throws Exception {
+        // Arrange
+        ReflectionTestUtils.setField(filter, "authEnabled", true);
+        when(request.getMethod()).thenReturn("GET");
+        when(request.getRequestURI()).thenReturn("/api/users/user123/profile");
+        when(request.getHeader("Authorization")).thenReturn("Bearer bad-token");
+
+        FirebaseAuthException authException = mock(FirebaseAuthException.class);
+        when(authException.getMessage()).thenReturn("Token invalid");
+
+        // Act & Assert — optional auth: bad token is silently ignored, request proceeds
+        try (MockedStatic<FirebaseAuth> mockedFirebaseAuth = mockStatic(FirebaseAuth.class)) {
+            mockedFirebaseAuth.when(FirebaseAuth::getInstance).thenReturn(firebaseAuth);
+            when(firebaseAuth.verifyIdToken("bad-token")).thenThrow(authException);
+
+            filter.doFilterInternal(request, response, filterChain);
+
+            verify(request, never()).setAttribute(anyString(), anyString());
+            verify(filterChain).doFilter(request, response);
+            verify(response, never()).sendError(anyInt(), anyString());
+        }
+    }
+
+    @Test
+    void doFilterInternal_UserProfilePath_AuthEnabled_RuntimeException_ProceedsWithoutUserId()
+            throws Exception {
+        // Arrange
+        ReflectionTestUtils.setField(filter, "authEnabled", true);
+        when(request.getMethod()).thenReturn("GET");
+        when(request.getRequestURI()).thenReturn("/api/users/user123/profile");
+        when(request.getHeader("Authorization")).thenReturn("Bearer some-token");
+
+        // Act & Assert — unexpected RuntimeException is silently swallowed, request proceeds
+        try (MockedStatic<FirebaseAuth> mockedFirebaseAuth = mockStatic(FirebaseAuth.class)) {
+            mockedFirebaseAuth.when(FirebaseAuth::getInstance).thenReturn(firebaseAuth);
+            when(firebaseAuth.verifyIdToken("some-token"))
+                    .thenThrow(new IllegalStateException("unexpected"));
+
+            filter.doFilterInternal(request, response, filterChain);
+
+            verify(request, never()).setAttribute(anyString(), anyString());
+            verify(filterChain).doFilter(request, response);
+            verify(response, never()).sendError(anyInt(), anyString());
+        }
+    }
 }

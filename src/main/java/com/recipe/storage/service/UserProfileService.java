@@ -24,6 +24,9 @@ public class UserProfileService {
   @Autowired(required = false)
   private Firestore firestore;
 
+  @Autowired(required = false)
+  private FollowService followService;
+
   @Value("${firestore.collection.users}")
   private String usersCollection;
 
@@ -33,12 +36,14 @@ public class UserProfileService {
   /**
    * Fetch the public profile for a given user uid.
    *
-   * @param uid The Firebase user ID
+   * @param uid           The Firebase user ID of the profile to fetch
+   * @param currentUserId The Firebase user ID of the authenticated caller, or {@code null} for
+   *                      unauthenticated requests; used to populate {@code isFollowedByCurrentUser}
    * @return The public profile response
    * @throws ResponseStatusException 404 if the user does not exist,
    *     503 if Firestore is not configured or unavailable
    */
-  public UserProfileResponse getUserProfile(String uid) {
+  public UserProfileResponse getUserProfile(String uid, String currentUserId) {
     if (firestore == null) {
       log.warn("Firestore not configured - cannot fetch user profile");
       throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
@@ -59,10 +64,21 @@ public class UserProfileService {
       String bio = userDocument.getString("bio");
       String avatarUrl = userDocument.getString("avatarUrl");
 
+      Long rawFollowerCount = userDocument.getLong("followerCount");
+      long followerCount = rawFollowerCount != null ? rawFollowerCount : 0L;
+
+      Long rawFollowingCount = userDocument.getLong("followingCount");
+      long followingCount = rawFollowingCount != null ? rawFollowingCount : 0L;
+
       long publicRecipeCount = countPublicRecipes(uid);
 
-      log.info("Retrieved public profile for user {} (publicRecipeCount={})",
-          uid, publicRecipeCount);
+      boolean isFollowedByCurrentUser = currentUserId != null
+          && followService != null
+          && followService.isFollowing(currentUserId, uid);
+
+      log.info("Retrieved public profile for user {} (publicRecipeCount={}, followerCount={}, "
+              + "followingCount={}, isFollowedByCurrentUser={})",
+          uid, publicRecipeCount, followerCount, followingCount, isFollowedByCurrentUser);
 
       return UserProfileResponse.builder()
           .uid(uid)
@@ -70,6 +86,9 @@ public class UserProfileService {
           .bio(bio)
           .avatarUrl(avatarUrl)
           .publicRecipeCount(publicRecipeCount)
+          .followerCount(followerCount)
+          .followingCount(followingCount)
+          .isFollowedByCurrentUser(isFollowedByCurrentUser)
           .build();
     } catch (ResponseStatusException e) {
       throw e;

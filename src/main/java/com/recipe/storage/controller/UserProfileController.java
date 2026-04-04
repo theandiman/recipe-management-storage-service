@@ -55,7 +55,9 @@ public class UserProfileController {
   @Operation(
       summary = "Get a user's public profile",
       description = "Retrieves the public profile for a given user uid, including their display "
-          + "name, bio, avatar URL, and count of public recipes. No authentication required.")
+          + "name, bio, avatar URL, count of public recipes, follower/following counts, and "
+          + "whether the authenticated caller follows this user. No authentication required; "
+          + "isFollowedByCurrentUser is only populated when a valid token is provided.")
   @ApiResponses(value = {
       @ApiResponse(
           responseCode = "200",
@@ -67,12 +69,14 @@ public class UserProfileController {
           content = @Content)
   })
   public ResponseEntity<UserProfileResponse> getUserProfile(
-      @Parameter(description = "User Firebase UID", required = true) @PathVariable String uid) {
+      @Parameter(description = "User Firebase UID", required = true) @PathVariable String uid,
+      @Parameter(hidden = true)
+      @RequestAttribute(name = "userId", required = false) String currentUserId) {
 
     MDC.put("user.profile.uid", uid);
     try {
       log.info("Fetching public profile for user {}", uid);
-      UserProfileResponse profile = userProfileService.getUserProfile(uid);
+      UserProfileResponse profile = userProfileService.getUserProfile(uid, currentUserId);
       return ResponseEntity.ok(profile);
     } finally {
       MDC.remove("user.profile.uid");
