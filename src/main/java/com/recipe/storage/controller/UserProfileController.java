@@ -1,5 +1,6 @@
 package com.recipe.storage.controller;
 
+import com.recipe.storage.dto.PagedFollowResponse;
 import com.recipe.storage.dto.UserProfileResponse;
 import com.recipe.storage.service.FollowService;
 import com.recipe.storage.service.UserProfileService;
@@ -12,16 +13,20 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -31,6 +36,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
+@Validated
 @Tag(name = "User Profiles", description = "APIs for accessing public user profile information")
 public class UserProfileController {
 
@@ -135,5 +141,85 @@ public class UserProfileController {
     log.info("User {} unfollowing user {}", userId, uid);
     followService.unfollowUser(userId, uid);
     return ResponseEntity.noContent().build();
+  }
+
+  /**
+   * Get a paginated list of users following the specified user.
+   * Does NOT require authentication.
+   *
+   * @param uid       the Firebase UID of the user whose followers to retrieve
+   * @param pageToken opaque cursor token from a previous response (null for first page)
+   * @param pageSize  maximum number of users per page (default 20, min 1, max 100)
+   * @return paginated list of followers
+   */
+  @GetMapping("/{uid}/followers")
+  @SecurityRequirements({})
+  @Operation(
+      summary = "List followers of a user",
+      description = "Returns a paginated list of users who follow the specified user. "
+          + "No authentication required.")
+  @ApiResponses(value = {
+      @ApiResponse(
+          responseCode = "200",
+          description = "Followers retrieved successfully",
+          content = @Content(schema = @Schema(implementation = PagedFollowResponse.class))),
+      @ApiResponse(responseCode = "400", description = "Invalid pageSize or pageToken",
+          content = @Content)
+  })
+  public ResponseEntity<PagedFollowResponse> getFollowers(
+      @Parameter(description = "User Firebase UID", required = true) @PathVariable String uid,
+      @Parameter(description = "Cursor token from a previous response (omit for first page)")
+      @RequestParam(name = "pageToken", required = false) String pageToken,
+      @Parameter(description = "Page size (default: 20, min: 1, max: 100)")
+      @RequestParam(name = "pageSize", defaultValue = "20") @Min(1) @Max(100) int pageSize) {
+
+    MDC.put("user.profile.uid", uid);
+    try {
+      log.info("Fetching followers for user {}", uid);
+      PagedFollowResponse response = followService.getFollowers(uid, pageToken, pageSize);
+      return ResponseEntity.ok(response);
+    } finally {
+      MDC.remove("user.profile.uid");
+    }
+  }
+
+  /**
+   * Get a paginated list of users the specified user is following.
+   * Does NOT require authentication.
+   *
+   * @param uid       the Firebase UID of the user whose following list to retrieve
+   * @param pageToken opaque cursor token from a previous response (null for first page)
+   * @param pageSize  maximum number of users per page (default 20, min 1, max 100)
+   * @return paginated list of followed users
+   */
+  @GetMapping("/{uid}/following")
+  @SecurityRequirements({})
+  @Operation(
+      summary = "List users that a user follows",
+      description = "Returns a paginated list of users that the specified user follows. "
+          + "No authentication required.")
+  @ApiResponses(value = {
+      @ApiResponse(
+          responseCode = "200",
+          description = "Following list retrieved successfully",
+          content = @Content(schema = @Schema(implementation = PagedFollowResponse.class))),
+      @ApiResponse(responseCode = "400", description = "Invalid pageSize or pageToken",
+          content = @Content)
+  })
+  public ResponseEntity<PagedFollowResponse> getFollowing(
+      @Parameter(description = "User Firebase UID", required = true) @PathVariable String uid,
+      @Parameter(description = "Cursor token from a previous response (omit for first page)")
+      @RequestParam(name = "pageToken", required = false) String pageToken,
+      @Parameter(description = "Page size (default: 20, min: 1, max: 100)")
+      @RequestParam(name = "pageSize", defaultValue = "20") @Min(1) @Max(100) int pageSize) {
+
+    MDC.put("user.profile.uid", uid);
+    try {
+      log.info("Fetching following list for user {}", uid);
+      PagedFollowResponse response = followService.getFollowing(uid, pageToken, pageSize);
+      return ResponseEntity.ok(response);
+    } finally {
+      MDC.remove("user.profile.uid");
+    }
   }
 }
